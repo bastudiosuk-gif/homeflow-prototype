@@ -182,7 +182,7 @@ function WardDisplay({ patients, updatedAt, onExit }: { patients: Patient[]; upd
   return <main className="ward-display" aria-label="HomeFlow privacy-safe ward display">
     <header className="ward-display-header">
       <div className="ward-display-brand"><div className="ward-display-logo"><Home size={30} /></div><div><strong>HomeFlow</strong><span>Ward display · Northview demo ward</span></div></div>
-      <div className="ward-display-privacy"><ShieldCheck size={22} /><div><strong>Privacy-safe demonstration</strong><span>Fictional IDs and beds only · no patient names</span></div></div>
+      <div className="ward-display-privacy"><ShieldCheck size={22} /><div><strong>Privacy-safe demonstration</strong><span>Fictional labels, IDs and beds only · no full names</span></div></div>
       <div className="ward-display-controls"><div className="ward-display-sync"><i /><span>Live sync · refreshed {refreshedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div><button onClick={toggleFullscreen}>{isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}<span>{isFullscreen ? "Exit full screen" : "Full screen"}</span></button><button onClick={onExit}>Presenter view</button></div>
     </header>
     <section className="ward-display-summary" aria-label="Ward discharge summary">
@@ -194,9 +194,9 @@ function WardDisplay({ patients, updatedAt, onExit }: { patients: Patient[]; upd
     <section className="ward-display-board">
       <div className="ward-display-board-heading"><div><p>LIVE COORDINATION VIEW</p><h1>Today’s ward discharge position</h1></div><div className="ward-display-legend"><span><i className="green" />Ready</span><span><i className="amber" />Action due</span><span><i className="red" />At risk</span></div></div>
       <div className="ward-display-table" role="table" aria-label="Privacy-safe discharge board">
-        <div className="ward-display-row ward-display-columns" role="row"><span>Demo patient / bed</span><span>Expected</span><span>Status</span><span>Barrier · owner</span><span>Target</span><span>Family readiness</span></div>
+        <div className="ward-display-row ward-display-columns" role="row"><span>Fictional patient / bed</span><span>Expected</span><span>Status</span><span>Barrier · owner</span><span>Target</span><span>Family readiness</span></div>
         {displayPatients.map((patient) => <div className={`ward-display-row rag-${patient.rag.toLowerCase()}`} role="row" key={patient.id}>
-          <div><strong>{patient.demoId}</strong><span>{patient.safeBed}</span></div>
+          <div><strong>{patient.name}</strong><span>{patient.demoId} · {patient.safeBed}</span></div>
           <div><strong>{patient.expected.split(" · ")[0]}</strong><span>{patient.expected.split(" · ")[1]}</span></div>
           <div><StatusPill status={patient.rag} /></div>
           <div><strong>{patient.barrier}</strong><span>{patient.owner}</span></div>
