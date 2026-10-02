@@ -3,7 +3,7 @@
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BedDouble, BellRing, Check,
   CheckCircle2, ChevronRight, CircleGauge, Clock3,
-  FileCheck2, HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
+  DoorOpen, FileCheck2, HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
   Maximize2, MessageSquareText, Minimize2, MonitorUp, PanelLeftClose, PanelLeftOpen, Pill, Play, Presentation,
   RefreshCcw, Route, ShieldCheck, Sparkles, Stethoscope, Target, TrendingDown,
   UserRoundCheck, Users, X,
@@ -14,7 +14,7 @@ type View = "dashboard" | "board" | "journey" | "family" | "escalation" | "integ
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
-type PatientUpdate = { barrierComplete: boolean; familyState: FamilyState };
+type PatientUpdate = { barrierComplete: boolean; familyState: FamilyState; leftWard?: boolean };
 type DemoState = { ttoComplete: boolean; familyState: FamilyState; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; updatedAt: number };
 
 const DEMO_STATE_KEY = "homeflow-demo-state-v1";
@@ -98,7 +98,7 @@ function WardBoard({ patients, onOpen }: { patients: Patient[]; onOpen: (patient
   </div>;
 }
 
-function Journey({ patient, barrierComplete, familyState, onBarrier, onFamily }: { patient: Patient; barrierComplete: boolean; familyState: FamilyState; onBarrier: () => void; onFamily: () => void }) {
+function Journey({ patient, barrierComplete, familyState, onBarrier, onFamily, onPatientLeft }: { patient: Patient; barrierComplete: boolean; familyState: FamilyState; onBarrier: () => void; onFamily: () => void; onPatientLeft: () => void }) {
   const familyConfirmed = familyState === "confirmed" || patient.family.toLowerCase().includes("confirmed");
   const ready = barrierComplete && familyConfirmed;
   const initials = patient.name.split(" ").map((part) => part[0]).join("").replace(".", "").slice(0, 2).toUpperCase();
@@ -112,8 +112,12 @@ function Journey({ patient, barrierComplete, familyState, onBarrier, onFamily }:
   ];
   return <div className="screen-stack"><section className={`barrier-hero ${ready ? "resolved" : ""}`}><div className="barrier-symbol">{ready ? <CheckCircle2 /> : <Pill />}</div><div className="barrier-copy"><p className="section-kicker">{ready ? "Ready to go" : "Main barrier right now"}</p><h2>{ready ? "All discharge actions complete" : barrierComplete ? "Family collection confirmation" : patient.barrier}</h2><p>{ready ? `${patient.name} is now Green. The ward board and ward display have updated.` : barrierComplete ? "The main barrier is complete. The ward is waiting for family or transport confirmation." : `Action is owned by ${patient.owner} with a target of ${patient.deadline}. Completing it updates every HomeFlow view.`}</p></div><StatusPill status={ready ? "Green" : patient.rag} /></section>
     <section className="journey-layout"><article className="panel journey-panel"><div className="panel-heading"><div><p className="section-kicker">Discharge timeline</p><h2>{steps.length} coordinated steps</h2></div><span className="mini-badge">{steps.filter((s) => s.done).length} of {steps.length} complete</span></div><div className="timeline">{steps.map((step, index) => <div className={`timeline-step ${step.done ? "done" : "pending"}`} key={step.label}><div className="timeline-marker">{step.done ? <Check size={16} /> : index + 1}</div><div className="timeline-content"><h3>{step.label}</h3><p>{step.owner}</p></div><div className="timeline-meta"><span>{step.meta}</span>{step.action && <Button onClick={onBarrier}>Mark barrier complete</Button>}{step.familyAction && <Button variant="secondary" onClick={onFamily}>Confirm collection</Button>}</div></div>)}</div></article>
-      <aside className="patient-card panel"><div className="avatar">{initials}</div><h2>{patient.name}</h2><p className="muted">Fictional demo patient</p><dl><div><dt>Location</dt><dd>{patient.ward} · {patient.bed}</dd></div><div><dt>Expected discharge</dt><dd>{patient.expected}</dd></div><div><dt>Pathway</dt><dd>Pathway 0 · Home</dd></div><div><dt>Family readiness</dt><dd>{patient.family}</dd></div></dl><div className="completion"><div><span>Journey completion</span><strong>{Math.round((steps.filter((s) => s.done).length / steps.length) * 100)}%</strong></div><div className="progress"><span style={{ width: `${(steps.filter((s) => s.done).length / steps.length) * 100}%` }} /></div></div></aside>
+      <aside className="patient-card panel"><div className="avatar">{initials}</div><h2>{patient.name}</h2><p className="muted">Fictional demo patient</p><dl><div><dt>Location</dt><dd>{patient.ward} · {patient.bed}</dd></div><div><dt>Expected discharge</dt><dd>{patient.expected}</dd></div><div><dt>Pathway</dt><dd>Pathway 0 · Home</dd></div><div><dt>Family readiness</dt><dd>{patient.family}</dd></div></dl><div className="completion"><div><span>Journey completion</span><strong>{Math.round((steps.filter((s) => s.done).length / steps.length) * 100)}%</strong></div><div className="progress"><span style={{ width: `${(steps.filter((s) => s.done).length / steps.length) * 100}%` }} /></div></div><div className="departure-action"><DoorOpen size={20} /><div><strong>Patient departure</strong><span>{ready ? "Remove this patient from live ward views." : "Complete the journey before recording departure."}</span></div><Button variant="secondary" onClick={onPatientLeft} disabled={!ready}>Patient has left ward</Button></div></aside>
     </section></div>;
+}
+
+function EmptyJourney({ onBoard }: { onBoard: () => void }) {
+  return <section className="panel empty-journey"><CheckCircle2 size={34} /><div><p className="section-kicker">Ward cleared</p><h2>No patients remain on the live ward board</h2><p>All fictional demo patients have been recorded as having left the ward. Use Reset demo to restore the starting cohort.</p></div><Button variant="secondary" onClick={onBoard}>Return to ward board</Button></section>;
 }
 
 function FamilyScreen({ familyConfirmed, onFamily }: { familyConfirmed: boolean; onFamily: (state: "confirmed" | "support" | "contact") => void }) {
@@ -246,7 +250,7 @@ export default function HomeFlow() {
   const skipFirstPublishRef = useRef(true);
   const channelRef = useRef<BroadcastChannel | null>(null);
   const ready = ttoComplete && familyState === "confirmed";
-  const patients = useMemo(() => basePatients.map((patient) => {
+  const patients = useMemo(() => basePatients.filter((patient) => !patientUpdates[patient.id]?.leftWard).map((patient) => {
     const update = patient.id === "margaret" ? { barrierComplete: ttoComplete, familyState } : patientUpdates[patient.id];
     if (!update) return patient;
     const barrierComplete = update.barrierComplete || patient.rag === "Green";
@@ -274,7 +278,7 @@ export default function HomeFlow() {
     if (patientId === "margaret") { completeTto(); return; }
     const patient = basePatients.find((item) => item.id === patientId);
     if (!patient) return;
-    setPatientUpdates((current) => ({ ...current, [patientId]: { barrierComplete: true, familyState: current[patientId]?.familyState ?? defaultFamilyState(patient) } }));
+    setPatientUpdates((current) => ({ ...current, [patientId]: { ...current[patientId], barrierComplete: true, familyState: current[patientId]?.familyState ?? defaultFamilyState(patient) } }));
     setUpdatedAt(Date.now());
     showToast(`${patient.name}’s barrier is complete — all HomeFlow views have updated.`);
   }, [completeTto, showToast]);
@@ -282,11 +286,23 @@ export default function HomeFlow() {
     if (patientId === "margaret") { confirmFamily("confirmed"); return; }
     const patient = basePatients.find((item) => item.id === patientId);
     if (!patient) return;
-    setPatientUpdates((current) => ({ ...current, [patientId]: { barrierComplete: current[patientId]?.barrierComplete ?? patient.rag === "Green", familyState: "confirmed" } }));
+    setPatientUpdates((current) => ({ ...current, [patientId]: { ...current[patientId], barrierComplete: current[patientId]?.barrierComplete ?? patient.rag === "Green", familyState: "confirmed" } }));
     setUpdatedAt(Date.now());
     showToast(`${patient.name}’s collection is confirmed — the ward display has updated.`);
   }, [confirmFamily, showToast]);
   const navigate = useCallback((next: View) => { setView(next); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  const recordPatientLeft = useCallback((patientId: string) => {
+    const patient = basePatients.find((item) => item.id === patientId);
+    if (!patient) return;
+    const currentBarrierComplete = patientId === "margaret" ? ttoComplete : patientUpdates[patientId]?.barrierComplete ?? patient.rag === "Green";
+    const currentFamilyState = patientId === "margaret" ? familyState : patientUpdates[patientId]?.familyState ?? defaultFamilyState(patient);
+    setPatientUpdates((current) => ({ ...current, [patientId]: { ...current[patientId], barrierComplete: currentBarrierComplete, familyState: currentFamilyState, leftWard: true } }));
+    const nextPatient = basePatients.find((item) => item.id !== patientId && !patientUpdates[item.id]?.leftWard);
+    setSelectedPatientId(nextPatient?.id ?? "margaret");
+    setUpdatedAt(Date.now());
+    navigate("board");
+    showToast(`${patient.name} has left the ward and was removed from live ward views.`);
+  }, [familyState, navigate, patientUpdates, showToast, ttoComplete]);
   const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setEscalated(false); setPatientUpdates({}); setSelectedPatientId("margaret"); setUpdatedAt(Date.now()); setView("dashboard"); setWardDisplay(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [showToast]);
   const openWardDisplay = useCallback(() => { window.open(`${window.location.pathname}${window.location.search}#ward-display`, "homeflow-ward-display", "noopener,noreferrer"); }, []);
   const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); setView("dashboard"); setWardDisplay(false); }, []);
@@ -352,7 +368,7 @@ export default function HomeFlow() {
   }, [completeTto, confirmFamily, navigate, resetDemo]);
   const content: Record<View, React.ReactNode> = {
     dashboard: <Dashboard ready={ready} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
-    journey: <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => confirmPatientFamily(selectedPatient.id)} />,
+    journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => confirmPatientFamily(selectedPatient.id)} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     family: <FamilyScreen familyConfirmed={familyState === "confirmed"} onFamily={confirmFamily} />,
     escalation: <Escalation escalated={escalated} ttoComplete={ttoComplete} onEscalate={() => { setEscalated(true); setUpdatedAt(Date.now()); showToast("Demo escalation logged — nobody was contacted."); }} onTto={completeTto} />,
     integration: <Integration />,
