@@ -2,15 +2,15 @@
 
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BedDouble, BellRing, Check,
-  CheckCircle2, ChevronRight, CircleGauge, Clock3, FileCheck2,
-  HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
+  CheckCircle2, ChevronRight, CircleGauge, Clock3,
+  Home, Info, Layers3, LayoutDashboard, Link2, ListChecks,
   Maximize2, MessageSquareText, Minimize2, MonitorUp, PanelLeftClose, PanelLeftOpen, Pill, Play, Presentation,
   RefreshCcw, Route, ShieldCheck, Sparkles, Stethoscope, Target, TrendingDown,
   UserRoundCheck, Users, X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type View = "dashboard" | "board" | "journey" | "family" | "escalation" | "integration" | "analytics" | "pilot";
+type View = "dashboard" | "board" | "journey" | "family" | "escalation" | "integration" | "analytics" | "existingnew" | "pilot";
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
@@ -27,6 +27,7 @@ const navItems: { id: View; label: string; short: string; icon: typeof Home }[] 
   { id: "escalation", label: "Barrier escalation", short: "Escalation", icon: BellRing },
   { id: "integration", label: "Existing systems", short: "Integration", icon: Link2 },
   { id: "analytics", label: "Analytics & QI", short: "Analytics", icon: BarChart3 },
+  { id: "existingnew", label: "Existing vs new", short: "What’s new", icon: Layers3 },
   { id: "pilot", label: "The pilot ask", short: "Pilot", icon: Presentation },
 ];
 
@@ -56,8 +57,20 @@ const screenCopy: Record<View, { eyebrow: string; title: string; subtitle: strin
   escalation: { eyebrow: "Automated detection · demo only", title: "Spot overdue actions before they become lost hours", subtitle: "HomeFlow highlights the barrier, owner and next step—without contacting anyone in this prototype." },
   integration: { eyebrow: "Proposed coordination layer · not a replacement system", title: "Connect and enhance what already exists", subtitle: "HomeFlow brings selected information into a simplified view while each source system keeps its role." },
   analytics: { eyebrow: "Quality improvement · illustrative values", title: "Turn daily friction into measurable learning", subtitle: "Understand where discharge hours are lost and whether a small pilot makes a meaningful difference." },
+  existingnew: { eyebrow: "Capability map · proposed future state", title: "We are not starting from scratch.", subtitle: "HomeFlow connects trusted capability already available across the organisation and adds the missing family-readiness layer." },
   pilot: { eyebrow: "Dragons’ Den proposal", title: "Start small. Learn quickly. Scale what works.", subtitle: "A focused ward pilot to test workflow, usability, outcomes and integration feasibility." },
 };
+
+type CapabilityTone = "existing" | "proposed" | "addition" | "confirm";
+type CapabilityItem = { tag: string; tone: CapabilityTone; title: string; detail: string; tooltip?: string };
+
+function CapabilityLegend() {
+  return <div className="capability-legend" aria-label="Capability status legend"><span><i className="existing" /> Existing Trust capability</span><span><i className="proposed" /> Proposed integration</span><span><i className="addition" /> HomeFlow addition</span><span><i className="confirm" /> Requires confirmation</span></div>;
+}
+
+function CapabilityPanel({ items, title = "Existing Trust capability", className = "" }: { items: CapabilityItem[]; title?: string; className?: string }) {
+  return <section className={`capability-panel ${className}`} aria-label={title}><div className="capability-heading"><div><Info size={17} /><strong>{title}</strong></div><CapabilityLegend /></div><div className="capability-items">{items.map((item) => <article key={`${item.title}-${item.tag}`} title={item.tooltip}><span className={`capability-tag ${item.tone}`}>{item.tag}</span><strong>{item.title}</strong><p>{item.detail}</p></article>)}</div></section>;
+}
 
 function StatusPill({ status }: { status: Rag }) { return <span className={`status-pill status-${status.toLowerCase()}`}><span /> {status}</span>; }
 function Button({ children, onClick, variant = "primary", disabled = false }: { children: React.ReactNode; onClick?: () => void; variant?: "primary" | "secondary" | "quiet"; disabled?: boolean }) { return <button className={`button button-${variant}`} onClick={onClick} disabled={disabled}>{children}</button>; }
@@ -67,6 +80,11 @@ function KpiCard({ label, value, note, icon: Icon, tone = "blue" }: { label: str
 
 function Dashboard({ ready }: { ready: boolean }) {
   return <div className="screen-stack">
+    <CapabilityPanel items={[
+      { tag: "EXISTING", tone: "existing", title: "Executive discharge status", detail: "OPTICA" },
+      { tag: "PROPOSED INTEGRATION", tone: "proposed", title: "Executive reporting layer", detail: "Power BI / Microsoft Fabric" },
+      { tag: "HOMEFLOW ADDITION", tone: "addition", title: "Family readiness", detail: "HomeFlow" },
+    ]} />
     <section className="kpi-grid" aria-label="Discharge metrics">
       <KpiCard label="Expected today" value={18} note="Across 3 demo wards" icon={Users} />
       <KpiCard label="Ready for discharge" value={ready ? 7 : 6} note={ready ? "Margaret is now ready" : "2 awaiting collection"} icon={CheckCircle2} tone="green" />
@@ -87,7 +105,11 @@ function WardBoard({ patients, onOpen }: { patients: Patient[]; onOpen: () => vo
   const greenCount = patients.filter((patient) => patient.rag === "Green").length;
   const amberCount = patients.filter((patient) => patient.rag === "Amber").length;
   const redCount = patients.filter((patient) => patient.rag === "Red").length;
-  return <div className="screen-stack"><div className="board-toolbar"><div className="filter-group"><button className="filter active">All patients <span>{patients.length}</span></button><button className="filter">Today <span>{todayCount}</span></button><button className="filter">At risk <span>{redCount}</span></button></div><div className="board-summary"><span><i className="dot dot-green" /> {greenCount} Green</span><span><i className="dot dot-amber" /> {amberCount} Amber</span><span><i className="dot dot-red" /> {redCount} Red</span></div></div>
+  return <div className="screen-stack"><CapabilityPanel items={[
+    { tag: "EXISTING", tone: "existing", title: "Patient and admission data", detail: "Potential source: TrakCare / PAS / EPR. OPTICA at Northumbria already interfaces with TrakCare; HomeFlow would not create a second patient database." },
+    { tag: "EXISTING", tone: "existing", title: "Discharge status, barriers and ownership", detail: "Discharge status / Existing capability: OPTICA · Discharge barriers / Existing capability: OPTICA · Discharge tasks and ownership / Existing capability: OPTICA. No duplicate entry.", tooltip: "OPTICA already supports patient-specific discharge tasks allocated to members of the MDT." },
+    { tag: "HOMEFLOW PRESENTATION LAYER", tone: "addition", title: "Simplified RAG view and family readiness", detail: "Source data: OPTICA · Family readiness: HomeFlow addition" },
+  ]} /><div className="board-toolbar"><div className="filter-group"><button className="filter active">All patients <span>{patients.length}</span></button><button className="filter">Today <span>{todayCount}</span></button><button className="filter">At risk <span>{redCount}</span></button></div><div className="board-summary"><span><i className="dot dot-green" /> {greenCount} Green</span><span><i className="dot dot-amber" /> {amberCount} Amber</span><span><i className="dot dot-red" /> {redCount} Red</span></div></div>
     <section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Patient / location</th><th>Expected discharge</th><th>Status</th><th>Main barrier</th><th>Owner / target</th><th>Family readiness</th><th>Latest update</th><th><span className="sr-only">Action</span></th></tr></thead><tbody>{patients.map((p) => <tr key={p.id} className={p.id === "margaret" ? "focus-row" : ""}><td><div className="patient-name">{p.name}</div><div className="muted">{p.ward} / {p.bed}</div></td><td><strong>{p.expected.split(" · ")[0]}</strong><div className="muted">{p.expected.split(" · ")[1]}</div></td><td><StatusPill status={p.rag} /></td><td><strong>{p.barrier}</strong></td><td><strong>{p.owner}</strong><div className="muted">Target {p.deadline}</div></td><td><div className="family-state"><UserRoundCheck size={16} /> {p.family}</div></td><td><span className="muted">{p.update}</span></td><td><button className="icon-button" aria-label={`Open ${p.name}`} onClick={onOpen}><ChevronRight size={18} /></button></td></tr>)}</tbody></table></div><div className="table-foot"><Info size={16} /> All names and activity shown are fictional demo data.</div></section>
     <section className="mobile-patient-list" aria-label="Phone-friendly ward discharge board">{patients.map((patient, index) => <article className={`mobile-patient-card rag-${patient.rag.toLowerCase()}`} key={patient.id}>
       <header><div><span className="mobile-demo-id">DEMO-{String(index + 101)}</span><h2>{patient.name}</h2><p>{patient.ward} · {patient.bed.replace("Bed ", "Bed D-")}</p></div><StatusPill status={patient.rag} /></header>
@@ -109,7 +131,11 @@ function Journey({ ttoComplete, familyConfirmed, onTto, onFamily }: { ttoComplet
     { label: "Discharge summary complete", owner: "Medical team", meta: "Completed 10:32", done: true },
     { label: "Ready to leave", owner: "Ward team", meta: ready ? "All dependencies complete" : "Waiting on dependencies", done: ready },
   ];
-  return <div className="screen-stack"><section className={`barrier-hero ${ready ? "resolved" : ""}`}><div className="barrier-symbol">{ready ? <CheckCircle2 /> : <Pill />}</div><div className="barrier-copy"><p className="section-kicker">{ready ? "Ready to go" : "Main barrier right now"}</p><h2>{ready ? "All discharge actions complete" : ttoComplete ? "Family collection confirmation" : "TTO medication"}</h2><p>{ready ? "Margaret’s status has changed to Green and the executive view has updated." : ttoComplete ? "Medication is complete. The ward is waiting for the nominated contact to confirm collection." : "Pharmacy completion is due at 11:00. Completing it unlocks the next step."}</p></div><StatusPill status={ready ? "Green" : "Amber"} /></section>
+  return <div className="screen-stack"><CapabilityPanel items={[
+    { tag: "EXISTING", tone: "existing", title: "Discharge status and pathway", detail: "Existing capability: OPTICA — expected discharge, Criteria to Reside, pathway and stage" },
+    { tag: "EXISTING", tone: "existing", title: "Discharge tasks and ownership", detail: "Existing capability: OPTICA", tooltip: "OPTICA already supports patient-specific discharge tasks allocated to members of the MDT." },
+    { tag: "HOMEFLOW ADDITION", tone: "addition", title: "Family readiness", detail: "A proposed readiness signal shown alongside existing discharge progress" },
+  ]} /><section className={`barrier-hero ${ready ? "resolved" : ""}`}><div className="barrier-symbol">{ready ? <CheckCircle2 /> : <Pill />}</div><div className="barrier-copy"><p className="section-kicker">{ready ? "Ready to go" : "Main barrier right now"}</p><h2>{ready ? "All discharge actions complete" : ttoComplete ? "Family collection confirmation" : "TTO medication"}</h2><p>{ready ? "Margaret’s status has changed to Green and the executive view has updated." : ttoComplete ? "Medication is complete. The ward is waiting for the nominated contact to confirm collection." : "Pharmacy completion is due at 11:00. Completing it unlocks the next step."}</p></div><StatusPill status={ready ? "Green" : "Amber"} /></section>
     <section className="journey-layout"><article className="panel journey-panel"><div className="panel-heading"><div><p className="section-kicker">Discharge timeline</p><h2>8 coordinated steps</h2></div><span className="mini-badge">{steps.filter((s) => s.done).length} of 8 complete</span></div><div className="timeline">{steps.map((step, index) => <div className={`timeline-step ${step.done ? "done" : "pending"}`} key={step.label}><div className="timeline-marker">{step.done ? <Check size={16} /> : index + 1}</div><div className="timeline-content"><h3>{step.label}</h3><p>{step.owner}</p></div><div className="timeline-meta"><span>{step.meta}</span>{step.action && <Button onClick={onTto}>Mark complete</Button>}{step.familyAction && <Button variant="secondary" onClick={onFamily}>Confirm collection</Button>}</div></div>)}</div></article>
       <aside className="patient-card panel"><div className="avatar">MT</div><h2>Margaret T.</h2><p className="muted">Fictional demo patient</p><dl><div><dt>Location</dt><dd>Ward 3 · Bed 12</dd></div><div><dt>Expected discharge</dt><dd>Today · 14:00</dd></div><div><dt>Pathway</dt><dd>Pathway 0 · Home</dd></div><div><dt>Family contact</dt><dd>Daughter · nominated</dd></div></dl><div className="completion"><div><span>Journey completion</span><strong>{Math.round((steps.filter((s) => s.done).length / 8) * 100)}%</strong></div><div className="progress"><span style={{ width: `${(steps.filter((s) => s.done).length / 8) * 100}%` }} /></div></div></aside>
     </section></div>;
@@ -121,7 +147,12 @@ function FamilyScreen({ familyConfirmed, onFamily }: { familyConfirmed: boolean;
     { stage: "Preparing for discharge", time: "Today · 09:22", text: "Discharge is expected later today. Please be prepared for collection.", status: "Read 09:31", active: true },
     { stage: "Ready for collection", time: "Not yet sent", text: "Your relative is now ready for discharge. Please follow the collection arrangements agreed with the ward.", status: "Queued", active: false },
   ];
-  return <div className="screen-stack family-layout"><section className="phone-panel"><div className="phone"><div className="phone-top"><span>9:41</span><span className="phone-notch" /><span>•••</span></div><div className="message-header"><div className="message-logo"><Home size={19} /></div><div><strong>HomeFlow demo</strong><span>Simulated messages</span></div></div><div className="message-thread">{messages.map((m) => <div className={`message-stage ${m.active ? "active" : ""}`} key={m.stage}><div className="message-meta"><strong>{m.stage}</strong><span>{m.time}</span></div><div className="message-bubble">{m.text}</div><span className="delivery">{m.status}</span></div>)}</div></div></section>
+  return <div className="screen-stack family-layout"><CapabilityPanel className="capability-span" items={[
+    { tag: "HOMEFLOW ADDITION", tone: "addition", title: "Family readiness", detail: "The central HomeFlow innovation: a visible preparation and collection status for the ward team" },
+    { tag: "PROPOSED INTEGRATION", tone: "proposed", title: "Patient/family communication", detail: "Potential delivery: DrDoctor / Proposed HomeFlow trigger. Current inpatient discharge alerts are not assumed." },
+    { tag: "PROPOSED USE — REQUIRES CONFIRMATION", tone: "confirm", title: "Interactive family response", detail: "Potential use of DrDoctor interactive messaging or Patient Portal — subject to workflow, supplier and Trust confirmation" },
+    { tag: "EXISTING CAPABILITY / PROPOSED DISCHARGE USE", tone: "proposed", title: "Nominated contact", detail: "Contact details may be held in PAS/EPR and surfaced through an approved DrDoctor route. No real contacts are shown." },
+  ]} /><section className="phone-panel"><div className="phone"><div className="phone-top"><span>9:41</span><span className="phone-notch" /><span>•••</span></div><div className="message-header"><div className="message-logo"><Home size={19} /></div><div><strong>HomeFlow demo</strong><span>Simulated messages</span></div></div><div className="message-thread">{messages.map((m) => <div className={`message-stage ${m.active ? "active" : ""}`} key={m.stage}><div className="message-meta"><strong>{m.stage}</strong><span>{m.time}</span></div><div className="message-bubble">{m.text}</div><span className="delivery">{m.status}</span></div>)}</div></div></section>
     <section className="family-actions"><article className={`family-status-card ${familyConfirmed ? "confirmed" : ""}`}><div className="family-status-top"><div className="family-status-icon">{familyConfirmed ? <CheckCircle2 /> : <Clock3 />}</div><div><p className="section-kicker">Family readiness status</p><h2>{familyConfirmed ? "Confirmed" : "Awaiting response"}</h2></div></div><p>{familyConfirmed ? "Collection confirmed for 14:00. The ward discharge view has updated." : "The nominated contact has read the preparing-for-discharge message. A response is still needed."}</p></article>
       <article className="panel response-panel"><div className="panel-heading"><div><p className="section-kicker">Simulated family response</p><h2>What the family would see</h2></div><span className="simulation-tag">No message will be sent</span></div><p className="response-question">Can you collect your relative when the ward confirms they are ready?</p><div className="response-buttons"><Button onClick={() => onFamily("confirmed")}><Check size={17} /> I can collect</Button><Button variant="secondary" onClick={() => onFamily("support")}><AlertTriangle size={17} /> I may have difficulty</Button><Button variant="quiet" onClick={() => onFamily("contact")}><MessageSquareText size={17} /> Please contact me</Button></div></article>
       <article className="privacy-note"><ShieldCheck size={22} /><div><strong>Designed around approved communication routes</strong><p>Any real messaging would use an approved platform, consent model, nominated contact record and Information Governance review.</p></div></article>
@@ -129,29 +160,42 @@ function FamilyScreen({ familyConfirmed, onFamily }: { familyConfirmed: boolean;
 }
 
 function Escalation({ escalated, ttoComplete, onEscalate, onTto }: { escalated: boolean; ttoComplete: boolean; onEscalate: () => void; onTto: () => void }) {
-  return <div className="screen-stack"><section className={`overdue-card ${ttoComplete ? "resolved" : ""}`}><div className="overdue-clock">{ttoComplete ? <CheckCircle2 /> : <Clock3 />}</div><div><p className="section-kicker">{ttoComplete ? "Barrier resolved" : "Deadline monitor"}</p><h2>{ttoComplete ? "Pharmacy complete" : "Overdue by 35 minutes"}</h2><p>{ttoComplete ? "The patient journey and ward board now reflect completion." : "TTO target 11:00 · Demo current time 11:35"}</p></div><div className="overdue-number">{ttoComplete ? "Done" : "+00:35"}</div></section>
+  return <div className="screen-stack"><CapabilityPanel items={[
+    { tag: "EXISTING / ENHANCED PRESENTATION", tone: "existing", title: "Task and escalation data", detail: "Existing capability: OPTICA. HomeFlow proposes a clearer overdue-action presentation, not a new clinical record." },
+    { tag: "REQUIRES CONFIRMATION", tone: "confirm", title: "Escalation workflow", detail: "Recipients, thresholds and notification routes require clinical, operational and Digital agreement." },
+  ]} /><section className={`overdue-card ${ttoComplete ? "resolved" : ""}`}><div className="overdue-clock">{ttoComplete ? <CheckCircle2 /> : <Clock3 />}</div><div><p className="section-kicker">{ttoComplete ? "Barrier resolved" : "Deadline monitor"}</p><h2>{ttoComplete ? "Pharmacy complete" : "Overdue by 35 minutes"}</h2><p>{ttoComplete ? "The patient journey and ward board now reflect completion." : "TTO target 11:00 · Demo current time 11:35"}</p></div><div className="overdue-number">{ttoComplete ? "Done" : "+00:35"}</div></section>
     <section className="content-grid escalation-grid"><article className="panel escalation-detail"><div className="panel-heading"><div><p className="section-kicker">Barrier detail</p><h2>TTO medication · Margaret T.</h2></div><StatusPill status={ttoComplete ? "Green" : "Amber"} /></div><dl className="detail-grid"><div><dt>Responsible team</dt><dd><Stethoscope size={18} /> Medical team / Pharmacy</dd></div><div><dt>Target completion</dt><dd><Clock3 size={18} /> Today · 11:00</dd></div><div><dt>Escalation status</dt><dd><BellRing size={18} /> {ttoComplete ? "Closed" : escalated ? "Demo escalation logged" : "Not yet escalated"}</dd></div><div><dt>Patient impact</dt><dd><BedDouble size={18} /> Discharge cannot complete</dd></div></dl><div className="suggested-action"><div className="suggested-icon"><Target size={20} /></div><div><span>Suggested next action</span><strong>{ttoComplete ? "No further action required" : "Confirm prescription is clinically complete, then request pharmacy status update."}</strong></div></div><div className="action-row"><Button onClick={onEscalate} disabled={escalated || ttoComplete}><BellRing size={17} /> {escalated ? "Demo escalation logged" : "Escalate · demo only"}</Button><Button variant="secondary" onClick={onTto} disabled={ttoComplete}><Check size={17} /> {ttoComplete ? "Barrier complete" : "Mark barrier complete"}</Button></div></article>
       <aside className="panel escalation-log"><div className="panel-heading"><div><p className="section-kicker">Activity</p><h2>Escalation trail</h2></div></div><div className="log-list"><div><span>10:18</span><p><strong>TTO prescribed</strong>Medical team updated the task.</p></div><div><span>11:00</span><p><strong>Target passed</strong>No completion recorded.</p></div><div><span>11:20</span><p><strong>Ward reminder shown</strong>Demo alert surfaced in HomeFlow.</p></div>{escalated && <div className="latest"><span>11:35</span><p><strong>Demo escalation logged</strong>No person or system was contacted.</p></div>}</div></aside>
     </section></div>;
 }
 
-const systems = [
-  { name: "EPR / PAS", icon: FileCheck2, tag: "Existing capability", copy: "Patient demographics, ward, bed and expected discharge", side: "left" },
-  { name: "OPTICA", icon: ListChecks, tag: "Existing capability", copy: "Discharge pathway, barriers, tasks and ownership", side: "left" },
-  { name: "Home Safe / Care Point", icon: HeartHandshake, tag: "Requires confirmation", copy: "Community pathway status and handover milestones", side: "left" },
-  { name: "DrDoctor / approved messaging", icon: MessageSquareText, tag: "Proposed connection", copy: "Patient and nominated family communications", side: "right" },
-  { name: "Power BI / Analytics", icon: BarChart3, tag: "Proposed connection", copy: "Trends, delays, bottlenecks and evaluation", side: "right" },
-  { name: "Hospital at Home", icon: Home, tag: "Requires confirmation", copy: "Existing pathway referral and acceptance status", side: "right" },
-];
-function SystemCard({ name, icon: Icon, tag, copy }: { name: string; icon: typeof Home; tag: string; copy: string }) { const tone = tag === "Existing capability" ? "existing" : tag === "Proposed connection" ? "proposed" : "confirm"; return <article className="system-card"><div className="system-icon"><Icon size={20} /></div><div><span className={`system-tag ${tone}`}>{tag}</span><h3>{name}</h3><p>{copy}</p></div></article>; }
 function Integration() {
-  return <div className="screen-stack"><section className="integration-statement"><Link2 size={24} /><div><strong>HomeFlow is designed to connect and enhance existing capability, not replace existing systems.</strong><p>This diagram shows a proposed future state. No technical integration is claimed or included in this prototype.</p></div></section><section className="integration-canvas panel"><div className="system-column">{systems.filter((s) => s.side === "left").map((s) => <SystemCard key={s.name} {...s} />)}</div><div className="flow-lines left-lines"><span /><span /><span /></div><article className="homeflow-hub"><div className="hub-mark"><Home size={27} /><span><i /><i /><i /></span></div><p>PROPOSED COORDINATION LAYER</p><h2>HomeFlow</h2><ul><li><Check size={15} /> Simplified ward view</li><li><Check size={15} /> Barrier coordination</li><li><Check size={15} /> Family readiness</li><li><Check size={15} /> Timely prompts</li></ul><small>Prototype only</small></article><div className="flow-lines right-lines"><span /><span /><span /></div><div className="system-column">{systems.filter((s) => s.side === "right").map((s) => <SystemCard key={s.name} {...s} />)}</div></section><section className="approval-banner"><ShieldCheck size={22} /><div><strong>Integration subject to Digital, Information Governance and supplier approval.</strong><p>Data flows, interoperability standards, lawful basis, DPIA, clinical safety, access controls and supplier feasibility would all require formal confirmation.</p></div></section><div className="integration-legend"><span><i className="legend-existing" /> Existing capability</span><span><i className="legend-proposed" /> Proposed connection</span><span><i className="legend-confirm" /> Requires confirmation</span></div></div>;
+  const flow = [
+    { name: "TrakCare / PAS / EPR", tag: "EXISTING", tone: "existing", text: "Patient identity, demographics, admission, ward and bed" },
+    { name: "OPTICA", tag: "EXISTING", tone: "existing", text: "Expected discharge, Criteria to Reside, pathway, barriers, tasks and ownership" },
+    { name: "HomeFlow", tag: "HOMEFLOW ADDITION", tone: "addition", text: "Simplified coordination view, RAG presentation and family readiness" },
+    { name: "DrDoctor", tag: "PROPOSED INTEGRATION", tone: "proposed", text: "Potential approved delivery of staged patient/family communication" },
+    { name: "Power BI / Fabric", tag: "PROPOSED INTEGRATION", tone: "proposed", text: "Potential analytics, evaluation and quality-improvement reporting" },
+  ] as const;
+  return <div className="screen-stack"><section className="integration-statement"><Link2 size={24} /><div><strong>HomeFlow is designed to connect and enhance existing capability, not replace existing systems.</strong><p>This is a proposed future-state architecture. No live integration is claimed or included in this prototype.</p></div></section>
+    <section className="architecture-flow panel" aria-label="Proposed HomeFlow architecture">{flow.map((item, index) => <div className="architecture-step-wrap" key={item.name}><article className={`architecture-step ${item.tone}`}><span className={`capability-tag ${item.tone}`}>{item.tag}</span><h2>{item.name}</h2><p>{item.text}</p></article>{index < flow.length - 1 && <ArrowRight className="architecture-arrow" aria-hidden="true" />}</div>)}</section>
+    <section className="integration-support"><article><span className="capability-tag proposed">POTENTIAL DEVELOPMENT PARTNER</span><h3>Health Call</h3><p>Northumbria-owned digital health development capability. Any role would be agreed with the Trust; this prototype does not assign delivery responsibility.</p></article><article><span className="capability-tag confirm">REQUIRES ARCHITECTURE REVIEW</span><h3>Northumbria Digital Services</h3><p>Potential integration layer to be determined with Northumbria Digital Services.</p><p>Possible capabilities include Azure, API Management, Logic Apps, Power Apps where appropriate, Microsoft Fabric and internal Digital support.</p></article></section>
+    <section className="approval-banner"><ShieldCheck size={22} /><div><strong>Integration subject to Digital, Information Governance, clinical safety and supplier approval.</strong><p>Interfaces, interoperability standards, lawful basis, DPIA, access controls, support model and technical feasibility all require formal confirmation.</p></div></section><CapabilityLegend /></div>;
 }
 
 function Analytics() {
   const lostHours = [{ name: "TTO", value: 2.8 }, { name: "Transport", value: 2.2 }, { name: "Family", value: 1.7 }, { name: "Therapy", value: 1.4 }, { name: "Equipment", value: 1.2 }];
   const times = [{ time: "08–10", value: 8 }, { time: "10–12", value: 19 }, { time: "12–14", value: 28 }, { time: "14–16", value: 32 }, { time: "16–18", value: 13 }];
   return <div className="screen-stack"><section className="analytics-kpis"><KpiCard label="Before midday" value="27%" note="Target: 35%" icon={CircleGauge} /><KpiCard label="Family collection delay" value="46m" note="Illustrative average" icon={Users} tone="purple" /><KpiCard label="Lost discharge hours" value="38h" note="This demo week" icon={TrendingDown} tone="red" /><KpiCard label="Ready-to-leave time" value="2.4h" note="Baseline average" icon={Clock3} tone="amber" /></section><section className="analytics-grid"><article className="panel chart-panel"><div className="panel-heading"><div><p className="section-kicker">Top causes of delay</p><h2>Share of recorded barriers</h2></div><span className="mini-badge">n = 86</span></div><div className="donut-layout"><div className="donut-chart"><div><strong>31%</strong><span>TTO</span></div></div><div className="donut-legend">{bottlenecks.slice(0, 6).map((b) => <div key={b.label}><i style={{ background: b.color }} /><span>{b.label}</span><strong>{b.share}%</strong></div>)}</div></div></article><article className="panel chart-panel"><div className="panel-heading"><div><p className="section-kicker">Average lost hours</p><h2>Time impact by barrier</h2></div></div><div className="horizontal-chart">{lostHours.map((item) => <div key={item.name}><span>{item.name}</span><div><i style={{ width: `${item.value / 3 * 100}%` }} /></div><strong>{item.value}h</strong></div>)}</div></article><article className="panel chart-panel wide"><div className="panel-heading"><div><p className="section-kicker">Discharges by time of day</p><h2>Too many patients leave after 14:00</h2></div><span className="mini-badge">Demo baseline</span></div><div className="column-chart">{times.map((item) => <div key={item.time}><span className="column-value">{item.value}%</span><i style={{ height: `${item.value * 3.2}px` }} /><span>{item.time}</span></div>)}</div></article><article className="impact-card"><div><p className="section-kicker">Illustrative before vs after</p><h2>Potential impact</h2></div><div className="impact-stat"><span>Average avoidable delay</span><div><strong>2.4h</strong><ArrowRight /><strong className="after">1.7h</strong></div><small>Illustrative 29% reduction</small></div><ul><li><CheckCircle2 /> Fewer avoidable discharge hours</li><li><CheckCircle2 /> Earlier bed availability</li><li><CheckCircle2 /> Improved family preparedness</li><li><CheckCircle2 /> Better visibility of bottlenecks</li></ul></article></section></div>;
+}
+
+function ExistingVsNew() {
+  const columns = [
+    { title: "Already available", tone: "existing", tag: "EXISTING TRUST CAPABILITY", items: ["TrakCare / PAS / EPR patient and admission data", "OPTICA discharge status, pathways, barriers and MDT task ownership", "Existing Trust reporting and digital capability"] },
+    { title: "HomeFlow connects", tone: "proposed", tag: "PROPOSED INTEGRATION", items: ["A focused OPTICA-fed ward presentation", "Potential staged communication through DrDoctor", "Potential evaluation through Power BI / Microsoft Fabric", "Architecture agreed with Northumbria Digital Services"] },
+    { title: "New value", tone: "addition", tag: "HOMEFLOW ADDITION", items: ["Family readiness visible alongside discharge progress", "One simple view across clinical, operational and family dependencies", "Privacy-safe ward display", "Earlier shared prompts and pilot learning"] },
+  ] as const;
+  return <div className="screen-stack"><section className="not-starting-statement"><Layers3 size={30} /><div><strong>HomeFlow is a coordination and readiness layer—not a replacement EPR, discharge system or messaging platform.</strong><p>It is designed to make existing capability easier to act on and add only the missing family-readiness signal.</p></div></section><section className="existing-new-grid">{columns.map((column) => <article className={`existing-new-card ${column.tone}`} key={column.title}><span className={`capability-tag ${column.tone}`}>{column.tag}</span><h2>{column.title}</h2><ul>{column.items.map((item) => <li key={item}><CheckCircle2 size={18} />{item}</li>)}</ul></article>)}</section><section className="confirmation-strip"><span className="capability-tag confirm">REQUIRES CONFIRMATION</span><p>All proposed integrations, data flows, supplier features, governance arrangements and delivery partners require formal Trust review.</p></section><CapabilityLegend /></div>;
 }
 
 function Pilot() {
@@ -203,9 +247,9 @@ function WardDisplay({ patients, updatedAt, onExit }: { patients: Patient[]; upd
     <section className="ward-display-board">
       <div className="ward-display-board-heading"><div><p>LIVE COORDINATION VIEW</p><h1>Today’s ward discharge position</h1></div><div className="ward-display-legend"><span><i className="green" />Ready</span><span><i className="amber" />Action due</span><span><i className="red" />At risk</span></div></div>
       <div className="ward-display-table" role="table" aria-label="Privacy-safe discharge board">
-        <div className="ward-display-row ward-display-columns" role="row"><span>Fictional patient / bed</span><span>Expected</span><span>Status</span><span>Barrier · owner</span><span>Target</span><span>Family readiness</span></div>
+        <div className="ward-display-row ward-display-columns" role="row"><span>Bed / demo ID</span><span>Expected</span><span>RAG</span><span>Barrier · owner</span><span>Target</span><span>Family readiness</span></div>
         {displayPatients.map((patient) => <div className={`ward-display-row rag-${patient.rag.toLowerCase()}`} role="row" key={patient.id}>
-          <div><strong>{patient.name}</strong><span>{patient.demoId} · {patient.safeBed}</span></div>
+          <div><strong>{patient.safeBed}</strong><span>{patient.demoId} · fictional identifier</span></div>
           <div><strong>{patient.expected.split(" · ")[0]}</strong><span>{patient.expected.split(" · ")[1]}</span></div>
           <div><StatusPill status={patient.rag} /></div>
           <div><strong>{patient.barrier}</strong><span>{patient.owner}</span></div>
@@ -214,7 +258,8 @@ function WardDisplay({ patients, updatedAt, onExit }: { patients: Patient[]; upd
         </div>)}
       </div>
     </section>
-    <footer className="ward-display-footer"><span><RefreshCcw size={16} /> Demo state auto-refreshes every 5 seconds and updates immediately from presenter actions.</span><span>State updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><strong>Prototype · fictional data only</strong></footer>
+    <section className="ward-data-sources"><strong>Proposed data sources:</strong><span><b>OPTICA</b> — discharge status and barriers</span><span><b>HomeFlow</b> — family readiness</span><em className="capability-tag proposed">PROPOSED INTERFACE</em></section>
+    <footer className="ward-display-footer"><span><RefreshCcw size={16} /> Demo state auto-refreshes every 5 seconds and updates immediately from presenter actions.</span><span>State updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><strong>HomeFlow Prototype — Demonstration Data</strong></footer>
   </main>;
 }
 
@@ -236,12 +281,16 @@ export default function HomeFlow() {
   const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(null), 3200); }, []);
   const completeTto = useCallback(() => { setTtoComplete(true); setUpdatedAt(Date.now()); showToast("TTO marked complete — Margaret’s journey has updated."); }, [showToast]);
   const confirmFamily = useCallback((state: "confirmed" | "support" | "contact" = "confirmed") => { setFamilyState(state); setUpdatedAt(Date.now()); showToast(state === "confirmed" ? "Collection confirmed — family readiness has updated." : state === "support" ? "Support required — the ward view has updated." : "Contact request recorded in demo mode."); }, [showToast]);
-  const navigate = useCallback((next: View) => { setView(next); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
-  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setEscalated(false); setUpdatedAt(Date.now()); setView("dashboard"); showToast("Demo reset to the starting position."); }, [showToast]);
+  const navigate = useCallback((next: View) => { setView(next); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setEscalated(false); setUpdatedAt(Date.now()); setView("dashboard"); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [showToast]);
   const openWardDisplay = useCallback(() => { window.open(`${window.location.pathname}${window.location.search}#ward-display`, "homeflow-ward-display", "noopener,noreferrer"); }, []);
-  const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`); setWardDisplay(false); }, []);
+  const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); setView("dashboard"); setWardDisplay(false); }, []);
   useEffect(() => {
-    const updateDisplayMode = () => setWardDisplay(window.location.hash === "#ward-display");
+    const updateDisplayMode = () => {
+      const hash = window.location.hash.slice(1);
+      setWardDisplay(hash === "ward-display");
+      if (navItems.some((item) => item.id === hash)) setView(hash as View);
+    };
     updateDisplayMode();
     window.addEventListener("hashchange", updateDisplayMode);
     return () => window.removeEventListener("hashchange", updateDisplayMode);
@@ -300,10 +349,21 @@ export default function HomeFlow() {
     journey: <Journey ttoComplete={ttoComplete} familyConfirmed={familyState === "confirmed"} onTto={completeTto} onFamily={() => confirmFamily("confirmed")} />,
     family: <FamilyScreen familyConfirmed={familyState === "confirmed"} onFamily={confirmFamily} />,
     escalation: <Escalation escalated={escalated} ttoComplete={ttoComplete} onEscalate={() => { setEscalated(true); setUpdatedAt(Date.now()); showToast("Demo escalation logged — nobody was contacted."); }} onTto={completeTto} />,
-    integration: <Integration />, analytics: <Analytics />, pilot: <Pilot />,
+    integration: <Integration />,
+    analytics: <><CapabilityPanel items={[
+      { tag: "EXISTING DIGITAL CAPABILITY", tone: "existing", title: "Discharge tracking and reporting", detail: "OPTICA provides existing discharge data and reporting capability" },
+      { tag: "PROPOSED DATASET", tone: "addition", title: "Family readiness", detail: "HomeFlow would add a new readiness measure for agreed pilot evaluation" },
+      { tag: "PROPOSED INTEGRATION", tone: "proposed", title: "Potential analytics platform: Power BI / Microsoft Fabric", detail: "Illustrative dashboards require Trust data, governance and architecture confirmation" },
+    ]} /><Analytics /></>,
+    existingnew: <ExistingVsNew />,
+    pilot: <><CapabilityPanel items={[
+      { tag: "EXISTING", tone: "existing", title: "Use approved Trust capability first", detail: "Build on OPTICA, patient administration data and current improvement methods" },
+      { tag: "HOMEFLOW ADDITION", tone: "addition", title: "Pilot the readiness layer", detail: "Test the family-readiness view and privacy-safe presentation on one ward" },
+      { tag: "REQUIRES CONFIRMATION", tone: "confirm", title: "Feasibility and governance", detail: "Clinical, operational, Digital, IG, supplier and evaluation agreement is required before any live pilot" },
+    ]} /><Pilot /></>,
   };
   if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
-  return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>Prototype / Demo Data Only</strong><span>No real patient data, messaging or live system integration</span></div>
+  return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>HomeFlow Prototype — Demonstration Data</strong><span>No real patient data, messaging or live system integration</span></div>
     <aside className="sidebar"><div className="brand"><div className="brand-mark"><Home size={22} /><span><i /><i /><i /></span></div>{sidebarOpen && <div><strong>HomeFlow</strong><span>Discharge coordination</span></div>}</div><nav aria-label="Main navigation">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)} title={item.label}><Icon size={19} />{sidebarOpen && <span>{item.short}</span>}</button>; })}</nav><div className="sidebar-bottom"><button className="demo-reset" onClick={resetDemo}><RefreshCcw size={18} />{sidebarOpen && <span>Reset demo</span>}</button><div className="not-nhs"><ShieldCheck size={17} />{sidebarOpen && <span>Independent innovation concept<br />Not an official NHS product</span>}</div></div></aside>
     <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button><div className="topbar-context"><strong>Northview NHS Trust</strong><span>Fictional demonstration environment</span></div><div className="topbar-actions"><button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button><div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated 11:35</span></div></div></header>
     <main className="main-content"><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>

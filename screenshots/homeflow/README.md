@@ -1,0 +1,16 @@
+# HomeFlow prototype screenshots
+
+All screenshots show fictional demonstration data and are labelled **HomeFlow Prototype — Demonstration Data**. They illustrate a proposed future state; they do not evidence live integration or an existing Northumbria product.
+
+| File | Page name | Feature shown | Existing capability | Genuinely new | Confirmation needed |
+| --- | --- | --- | --- | --- | --- |
+| `01-executive-dashboard.png` | Executive overview | Ward-level discharge KPIs, bottlenecks and family readiness | OPTICA discharge data; existing Trust reporting capability | HomeFlow family-readiness signal and simplified presentation | Power BI / Microsoft Fabric dataset and architecture |
+| `02-ward-discharge-board.png` | Ward discharge board | Expected discharge, RAG, barriers, owner, target and family readiness | TrakCare/PAS/EPR patient and admission data; OPTICA discharge status, barriers and MDT task ownership | Combined, simplified HomeFlow view and family readiness | Approved data flows and technical interface |
+| `03-patient-discharge-journey.png` | Patient discharge journey | Coordinated discharge steps with owners and deadlines | OPTICA pathway, stage, tasks and ownership | Family-readiness dependency alongside the journey | Final workflow and integration design |
+| `04-family-communication.png` | Family communication | Staged early-warning, preparation and collection messages | PAS/EPR nominated contact data and existing DrDoctor capability | HomeFlow family-readiness workflow and triggers | Inpatient discharge use, interactive responses, consent, supplier and IG approval |
+| `05-barrier-escalation.png` | Barrier escalation | Overdue barrier, owner, target and escalation trail | OPTICA task and escalation data | Enhanced HomeFlow presentation | Recipients, thresholds and notification routes |
+| `06-ward-display.png` | Ward Display Mode | Privacy-safe large-screen discharge coordination view | OPTICA discharge status and barriers | HomeFlow family readiness and simplified monitor interface | Production feed, device, access and governance model |
+| `07-analytics-qi.png` | Analytics & QI | Illustrative bottlenecks, lost hours and pilot measures | OPTICA tracking/reporting; existing Trust analytics capability | Family-readiness pilot dataset | Power BI / Microsoft Fabric implementation and approved measures |
+| `08-existing-systems-integration.png` | Existing systems integration | Proposed TrakCare/PAS/EPR → OPTICA → HomeFlow → DrDoctor → Power BI/Fabric architecture | TrakCare/PAS/EPR and OPTICA | HomeFlow coordination/readiness layer | Northumbria Digital Services architecture, Health Call role, suppliers, IG and clinical safety |
+| `09-existing-vs-new.png` | We are not starting from scratch | Clear separation of available, connected and new capability | Core patient, discharge and reporting systems | Readiness layer, privacy-safe display and shared prompts | Every proposed interface, dataset and delivery partner |
+| `10-dragons-den-pilot.png` | Dragons’ Den pilot | One-ward, 8–12 week test and evaluation ask | Approved Trust capability used first | Small-scale HomeFlow readiness and coordination test | Clinical, operational, Digital, IG, supplier and evaluation approval |
