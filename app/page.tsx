@@ -4,15 +4,20 @@ import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BedDouble, BellRing, Check,
   CheckCircle2, ChevronRight, CircleGauge, Clock3, FileCheck2,
   HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
-  MessageSquareText, PanelLeftClose, PanelLeftOpen, Pill, Play, Presentation,
+  Maximize2, MessageSquareText, Minimize2, MonitorUp, PanelLeftClose, PanelLeftOpen, Pill, Play, Presentation,
   RefreshCcw, Route, ShieldCheck, Sparkles, Stethoscope, Target, TrendingDown,
   UserRoundCheck, Users, X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type View = "dashboard" | "board" | "journey" | "family" | "escalation" | "integration" | "analytics" | "pilot";
 type Rag = "Green" | "Amber" | "Red";
+type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
+type DemoState = { ttoComplete: boolean; familyState: FamilyState; escalated: boolean; updatedAt: number };
+
+const DEMO_STATE_KEY = "homeflow-demo-state-v1";
+const DEMO_CHANNEL = "homeflow-demo-sync";
 
 const navItems: { id: View; label: string; short: string; icon: typeof Home }[] = [
   { id: "dashboard", label: "Executive overview", short: "Overview", icon: LayoutDashboard },
@@ -145,21 +150,131 @@ function Pilot() {
   return <div className="screen-stack"><section className="pilot-intro"><div className="pilot-number">01</div><div><p className="section-kicker">A deliberately small first step</p><h2>One ward. Eight to twelve weeks. A clear learning question.</h2><p>Can a shared coordination and family-readiness view reduce avoidable discharge hours without duplicating the systems teams already use?</p></div></section><section className="pilot-grid"><article className="panel pilot-plan"><div className="panel-heading"><div><p className="section-kicker">Proposed pilot</p><h2>Build evidence before scale</h2></div><Play size={24} /></div><div className="pilot-steps">{[["01","1 ward","Start with one engaged clinical area and a defined cohort."],["02","8–12 weeks","Enough time to establish a baseline, test and learn."],["03","Existing technology","Use approved capability where possible; avoid unnecessary procurement."],["04","Listen and adapt","Gather staff, patient and family feedback throughout."],["05","Evaluate","Compare baseline with post-pilot performance."]].map((s) => <div key={s[0]}><span>{s[0]}</span><strong>{s[1]}</strong><p>{s[2]}</p></div>)}</div></article><article className="panel measures-panel"><div className="panel-heading"><div><p className="section-kicker">Measures that matter</p><h2>Balanced pilot evaluation</h2></div></div><div className="measure-list">{measures.map((m, i) => <div key={m}><span>{String(i + 1).padStart(2, "0")}</span><p>{m}</p><CheckCircle2 size={18} /></div>)}</div></article></section><section className="ask-card"><div className="ask-icon"><Sparkles /></div><div><p className="section-kicker">The ask</p><h2>Support to develop, integrate and evaluate a small HomeFlow pilot.</h2><p>Bring clinical, operational, digital, IG and improvement colleagues together to test feasibility safely.</p></div><div className="ask-outcomes"><span>Develop</span><ArrowRight /><span>Integrate</span><ArrowRight /><span>Evaluate</span></div></section></div>;
 }
 
+function WardDisplay({ patients, updatedAt, onExit }: { patients: Patient[]; updatedAt: number; onExit: () => void }) {
+  const [refreshedAt, setRefreshedAt] = useState(() => new Date());
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const displayPatients = patients.map((patient, index) => ({
+    ...patient,
+    demoId: `DEMO-${String(index + 101)}`,
+    safeBed: patient.bed.replace("Bed ", "Bed D-"),
+  }));
+  const expectedToday = displayPatients.filter((patient) => patient.expected.startsWith("Today")).length;
+  const readyPatients = displayPatients.filter((patient) => patient.rag === "Green").length;
+  const outstandingBarriers = displayPatients.filter((patient) => patient.rag !== "Green").length;
+  const dischargeRisk = displayPatients.filter((patient) => patient.rag === "Red").length;
+
+  useEffect(() => {
+    const refresh = () => setRefreshedAt(new Date());
+    const refreshTimer = window.setInterval(refresh, 5000);
+    const fullscreenChanged = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", fullscreenChanged);
+    return () => {
+      window.clearInterval(refreshTimer);
+      document.removeEventListener("fullscreenchange", fullscreenChanged);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  };
+
+  return <main className="ward-display" aria-label="HomeFlow privacy-safe ward display">
+    <header className="ward-display-header">
+      <div className="ward-display-brand"><div className="ward-display-logo"><Home size={30} /></div><div><strong>HomeFlow</strong><span>Ward display · Northview demo ward</span></div></div>
+      <div className="ward-display-privacy"><ShieldCheck size={22} /><div><strong>Privacy-safe demonstration</strong><span>Fictional IDs and beds only · no patient names</span></div></div>
+      <div className="ward-display-controls"><div className="ward-display-sync"><i /><span>Live sync · refreshed {refreshedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span></div><button onClick={toggleFullscreen}>{isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}<span>{isFullscreen ? "Exit full screen" : "Full screen"}</span></button><button onClick={onExit}>Presenter view</button></div>
+    </header>
+    <section className="ward-display-summary" aria-label="Ward discharge summary">
+      <article><span>Expected today</span><strong>{expectedToday}</strong><small>Fictional demo cohort</small></article>
+      <article className="summary-green"><span>Ready patients</span><strong>{readyPatients}</strong><small>All actions complete</small></article>
+      <article className="summary-amber"><span>Outstanding barriers</span><strong>{outstandingBarriers}</strong><small>Owner action required</small></article>
+      <article className="summary-red"><span>Discharge risk</span><strong>{dischargeRisk}</strong><small>High-priority delay risk</small></article>
+    </section>
+    <section className="ward-display-board">
+      <div className="ward-display-board-heading"><div><p>LIVE COORDINATION VIEW</p><h1>Today’s ward discharge position</h1></div><div className="ward-display-legend"><span><i className="green" />Ready</span><span><i className="amber" />Action due</span><span><i className="red" />At risk</span></div></div>
+      <div className="ward-display-table" role="table" aria-label="Privacy-safe discharge board">
+        <div className="ward-display-row ward-display-columns" role="row"><span>Demo patient / bed</span><span>Expected</span><span>Status</span><span>Barrier · owner</span><span>Target</span><span>Family readiness</span></div>
+        {displayPatients.map((patient) => <div className={`ward-display-row rag-${patient.rag.toLowerCase()}`} role="row" key={patient.id}>
+          <div><strong>{patient.demoId}</strong><span>{patient.safeBed}</span></div>
+          <div><strong>{patient.expected.split(" · ")[0]}</strong><span>{patient.expected.split(" · ")[1]}</span></div>
+          <div><StatusPill status={patient.rag} /></div>
+          <div><strong>{patient.barrier}</strong><span>{patient.owner}</span></div>
+          <div><strong>{patient.deadline}</strong><span>{patient.rag === "Green" ? "Complete" : "Target time"}</span></div>
+          <div><strong>{patient.family}</strong><span>{patient.family.includes("Support") ? "Needs attention" : patient.family.includes("confirmed") ? "Ready" : "Awaiting update"}</span></div>
+        </div>)}
+      </div>
+    </section>
+    <footer className="ward-display-footer"><span><RefreshCcw size={16} /> Demo state auto-refreshes every 5 seconds and updates immediately from presenter actions.</span><span>State updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span><strong>Prototype · fictional data only</strong></footer>
+  </main>;
+}
+
 export default function HomeFlow() {
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [demoMode, setDemoMode] = useState(true);
   const [ttoComplete, setTtoComplete] = useState(false);
-  const [familyState, setFamilyState] = useState<"awaiting" | "confirmed" | "support" | "contact">("awaiting");
+  const [familyState, setFamilyState] = useState<FamilyState>("awaiting");
   const [escalated, setEscalated] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [wardDisplay, setWardDisplay] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(() => Date.now());
+  const stateReadyRef = useRef(false);
+  const skipFirstPublishRef = useRef(true);
+  const channelRef = useRef<BroadcastChannel | null>(null);
   const ready = ttoComplete && familyState === "confirmed";
   const patients = useMemo(() => basePatients.map((p) => p.id === "margaret" ? { ...p, rag: ready ? "Green" as Rag : "Amber" as Rag, barrier: ready ? "None — ready to go" : ttoComplete ? "Family confirmation" : "TTO medication", owner: ready ? "Ward team" : ttoComplete ? "Ward coordinator" : "Medical team", deadline: ready ? "Complete" : ttoComplete ? "13:00" : "11:00", family: familyState === "confirmed" ? "Collection confirmed" : familyState === "support" ? "Support required" : familyState === "contact" ? "Contact requested" : "Ready to collect", update: ready ? "All actions complete · just now" : ttoComplete ? "Pharmacy complete · just now" : p.update } : p), [ready, ttoComplete, familyState]);
   const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(null), 3200); }, []);
-  const completeTto = useCallback(() => { setTtoComplete(true); showToast("TTO marked complete — Margaret’s journey has updated."); }, [showToast]);
-  const confirmFamily = useCallback((state: "confirmed" | "support" | "contact" = "confirmed") => { setFamilyState(state); showToast(state === "confirmed" ? "Collection confirmed — family readiness has updated." : state === "support" ? "Support required — the ward view has updated." : "Contact request recorded in demo mode."); }, [showToast]);
+  const completeTto = useCallback(() => { setTtoComplete(true); setUpdatedAt(Date.now()); showToast("TTO marked complete — Margaret’s journey has updated."); }, [showToast]);
+  const confirmFamily = useCallback((state: "confirmed" | "support" | "contact" = "confirmed") => { setFamilyState(state); setUpdatedAt(Date.now()); showToast(state === "confirmed" ? "Collection confirmed — family readiness has updated." : state === "support" ? "Support required — the ward view has updated." : "Contact request recorded in demo mode."); }, [showToast]);
   const navigate = useCallback((next: View) => { setView(next); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
-  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setEscalated(false); setView("dashboard"); showToast("Demo reset to the starting position."); }, [showToast]);
+  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setEscalated(false); setUpdatedAt(Date.now()); setView("dashboard"); showToast("Demo reset to the starting position."); }, [showToast]);
+  const openWardDisplay = useCallback(() => { window.open(`${window.location.pathname}${window.location.search}#ward-display`, "homeflow-ward-display", "noopener,noreferrer"); }, []);
+  const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`); setWardDisplay(false); }, []);
+  useEffect(() => {
+    const updateDisplayMode = () => setWardDisplay(window.location.hash === "#ward-display");
+    updateDisplayMode();
+    window.addEventListener("hashchange", updateDisplayMode);
+    return () => window.removeEventListener("hashchange", updateDisplayMode);
+  }, []);
+  useEffect(() => {
+    const applyState = (next: DemoState) => {
+      if (typeof next?.ttoComplete !== "boolean" || typeof next?.escalated !== "boolean" || !["awaiting", "confirmed", "support", "contact"].includes(next.familyState)) return;
+      setTtoComplete(next.ttoComplete);
+      setFamilyState(next.familyState);
+      setEscalated(next.escalated);
+      setUpdatedAt(next.updatedAt || Date.now());
+    };
+    const readStoredState = () => {
+      const stored = window.localStorage.getItem(DEMO_STATE_KEY);
+      if (!stored) return;
+      try { applyState(JSON.parse(stored) as DemoState); } catch { /* Ignore malformed local demo state. */ }
+    };
+    readStoredState();
+    const channel = typeof BroadcastChannel === "undefined" ? null : new BroadcastChannel(DEMO_CHANNEL);
+    if (channel) channel.onmessage = (event: MessageEvent<DemoState>) => applyState(event.data);
+    channelRef.current = channel;
+    const onStorage = (event: StorageEvent) => { if (event.key === DEMO_STATE_KEY && event.newValue) { try { applyState(JSON.parse(event.newValue) as DemoState); } catch { /* Ignore malformed local demo state. */ } } };
+    window.addEventListener("storage", onStorage);
+    const fallbackRefresh = window.setInterval(readStoredState, 5000);
+    stateReadyRef.current = true;
+    return () => {
+      window.clearInterval(fallbackRefresh);
+      window.removeEventListener("storage", onStorage);
+      channel?.close();
+      channelRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (!stateReadyRef.current) return;
+    if (skipFirstPublishRef.current) {
+      skipFirstPublishRef.current = false;
+      return;
+    }
+    const nextState: DemoState = { ttoComplete, familyState, escalated, updatedAt };
+    window.localStorage.setItem(DEMO_STATE_KEY, JSON.stringify(nextState));
+    channelRef.current?.postMessage(nextState);
+  }, [escalated, familyState, ttoComplete, updatedAt]);
   useEffect(() => {
     const mc = (document as Document & { modelContext?: { registerTool: (tool: unknown, options?: { signal: AbortSignal }) => void | Promise<void> } }).modelContext;
     if (!mc?.registerTool) return;
@@ -175,12 +290,13 @@ export default function HomeFlow() {
     dashboard: <Dashboard ready={ready} />, board: <WardBoard patients={patients} onOpen={() => navigate("journey")} />,
     journey: <Journey ttoComplete={ttoComplete} familyConfirmed={familyState === "confirmed"} onTto={completeTto} onFamily={() => confirmFamily("confirmed")} />,
     family: <FamilyScreen familyConfirmed={familyState === "confirmed"} onFamily={confirmFamily} />,
-    escalation: <Escalation escalated={escalated} ttoComplete={ttoComplete} onEscalate={() => { setEscalated(true); showToast("Demo escalation logged — nobody was contacted."); }} onTto={completeTto} />,
+    escalation: <Escalation escalated={escalated} ttoComplete={ttoComplete} onEscalate={() => { setEscalated(true); setUpdatedAt(Date.now()); showToast("Demo escalation logged — nobody was contacted."); }} onTto={completeTto} />,
     integration: <Integration />, analytics: <Analytics />, pilot: <Pilot />,
   };
+  if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>Prototype / Demo Data Only</strong><span>No real patient data, messaging or live system integration</span></div>
     <aside className="sidebar"><div className="brand"><div className="brand-mark"><Home size={22} /><span><i /><i /><i /></span></div>{sidebarOpen && <div><strong>HomeFlow</strong><span>Discharge coordination</span></div>}</div><nav aria-label="Main navigation">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)} title={item.label}><Icon size={19} />{sidebarOpen && <span>{item.short}</span>}</button>; })}</nav><div className="sidebar-bottom"><button className="demo-reset" onClick={resetDemo}><RefreshCcw size={18} />{sidebarOpen && <span>Reset demo</span>}</button><div className="not-nhs"><ShieldCheck size={17} />{sidebarOpen && <span>Independent innovation concept<br />Not an official NHS product</span>}</div></div></aside>
-    <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button><div className="topbar-context"><strong>Northview NHS Trust</strong><span>Fictional demonstration environment</span></div><div className="topbar-actions"><div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated 11:35</span></div></div></header>
+    <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button><div className="topbar-context"><strong>Northview NHS Trust</strong><span>Fictional demonstration environment</span></div><div className="topbar-actions"><button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button><div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated 11:35</span></div></div></header>
     <main className="main-content"><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>
     <div className="mobile-nav">{navItems.slice(0, 5).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}</div>
     {toast && <div className="toast" role="status"><CheckCircle2 size={19} /><span>{toast}</span><button onClick={() => setToast(null)} aria-label="Dismiss"><X size={16} /></button></div>}
