@@ -14,8 +14,8 @@ type View = "dashboard" | "board" | "journey" | "family" | "escalation" | "integ
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
-type PatientUpdate = { barrierComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; escalated?: boolean; leftWard?: boolean };
-type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; updatedAt: number };
+type PatientUpdate = { barrierComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated?: boolean; leftWard?: boolean };
+type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; updatedAt: number };
 
 const DEMO_STATE_KEY = "homeflow-demo-state-v1";
 const DEMO_CHANNEL = "homeflow-demo-sync";
@@ -125,14 +125,14 @@ function EmptyJourney({ onBoard }: { onBoard: () => void }) {
   return <section className="panel empty-journey"><CheckCircle2 size={34} /><div><p className="section-kicker">Ward cleared</p><h2>No patients remain on the live ward board</h2><p>All fictional demo patients have been recorded as having left the ward. Use Reset demo to restore the starting cohort.</p></div><Button variant="secondary" onClick={onBoard}>Return to ward board</Button></section>;
 }
 
-function FamilyScreen({ patient, familyState, alertSent, onAlert, onFamily }: { patient: Patient; familyState: FamilyState; alertSent: boolean; onAlert: () => void; onFamily: (state: "confirmed" | "support" | "contact") => void }) {
+function FamilyScreen({ patient, familyState, alertSent, responded, onAlert, onFamily }: { patient: Patient; familyState: FamilyState; alertSent: boolean; responded: boolean; onAlert: () => void; onFamily: (state: "confirmed" | "support" | "contact") => void }) {
   const familyConfirmed = familyState === "confirmed" || patient.family.toLowerCase().includes("confirmed");
   const statusLabel = familyConfirmed ? "Confirmed" : familyState === "support" ? "Support required" : familyState === "contact" ? "Contact requested" : "Awaiting response";
   const statusCopy = familyConfirmed ? `Collection confirmed for ${patient.expected.split(" · ")[1] ?? patient.expected}. The ward discharge view has updated.` : familyState === "support" ? "The nominated contact may have difficulty collecting. The ward view now highlights that support is required." : familyState === "contact" ? "The nominated contact has requested a call from the ward before collection arrangements are confirmed." : alertSent ? "The discharge alert has been sent. The ward is waiting for the nominated contact to respond." : "The nurse has not yet sent the discharge alert to the nominated contact.";
   const [expectedDay, expectedTime] = patient.expected.split(" · ");
   const message = `Hello. Your relative is likely to be ready for discharge ${expectedDay.toLowerCase()} at around ${expectedTime}. Please prepare to collect them at about this time. There may be a short delay while final checks, medicines or transport are completed. We will let you know if the expected time changes. Please use one of the options below to tell the ward whether you can collect them or need support.`;
   return <div className="screen-stack family-layout"><section className="phone-panel"><div className="phone"><div className="phone-top"><span>9:41</span><span className="phone-notch" /><span>•••</span></div><div className="message-header"><div className="message-logo"><Home size={19} /></div><div><strong>HomeFlow demo</strong><span>{patient.name} · one simulated message</span></div></div><div className="message-thread single-message"><div className={`message-stage active ${alertSent ? "sent" : "preview"}`}><div className="message-meta"><strong>{alertSent ? "Discharge alert sent" : "Message preview"}</strong><span>{alertSent ? "Today · 11:35" : "Not yet sent"}</span></div><div className="message-bubble">{message}</div><span className="delivery">{alertSent ? "Delivered · demonstration only" : "Preview · no message sent"}</span></div></div></div></section>
-    <section className="family-actions"><article className={`family-status-card ${familyConfirmed ? "confirmed" : ""}`}><div className="family-status-top"><div className="family-status-icon">{familyConfirmed ? <CheckCircle2 /> : <Clock3 />}</div><div><p className="section-kicker">Family readiness · {patient.name}</p><h2>{statusLabel}</h2></div></div><p>{statusCopy}</p></article>
+    <section className="family-actions"><article className={`family-status-card ${familyConfirmed ? "confirmed" : ""}`}><div className="family-status-top"><div className="family-status-icon">{familyConfirmed ? <CheckCircle2 /> : <Clock3 />}</div><div><p className="section-kicker">Family readiness · {patient.name}</p><h2>{statusLabel}</h2></div></div><p>{statusCopy}</p><div className="completion-checks" aria-label="Family communication progress"><div className={alertSent ? "complete" : "pending"}>{alertSent ? <CheckCircle2 size={19} /> : <Clock3 size={19} />}<span><strong>Family alerted</strong><small>{alertSent ? "Alert sent at 11:35" : "Waiting for nurse action"}</small></span></div><div className={responded ? "complete" : "pending"}>{responded ? <CheckCircle2 size={19} /> : <Clock3 size={19} />}<span><strong>Family responded</strong><small>{responded ? `Response recorded: ${statusLabel}` : "No response recorded yet"}</small></span></div></div></article>
       <article className="panel nurse-alert-panel"><div><p className="section-kicker">Nurse action</p><h2>Send the early discharge alert</h2><p>This sends the single simulated message shown on the phone and records that the family has been alerted.</p></div><Button onClick={onAlert} disabled={alertSent}>{alertSent ? <CheckCircle2 size={17} /> : <BellRing size={17} />}{alertSent ? " Family alerted" : " Alert family"}</Button></article>
       <article className="panel response-panel"><div className="panel-heading"><div><p className="section-kicker">Simulated family response</p><h2>Family reply options</h2></div><span className="simulation-tag">Demonstration only</span></div><p className="response-question">Can you collect your relative at around {expectedTime}?</p><div className="response-buttons"><button className={familyState === "confirmed" ? "selected" : ""} aria-pressed={familyState === "confirmed"} onClick={() => onFamily("confirmed")} disabled={!alertSent}><Check size={17} /> I can collect</button><button className={familyState === "support" ? "selected" : ""} aria-pressed={familyState === "support"} onClick={() => onFamily("support")} disabled={!alertSent}><AlertTriangle size={17} /> I may have difficulty</button><button className={familyState === "contact" ? "selected" : ""} aria-pressed={familyState === "contact"} onClick={() => onFamily("contact")} disabled={!alertSent}><MessageSquareText size={17} /> Please contact me</button></div>{!alertSent && <p className="response-help">The reply options become available after the nurse clicks Alert family.</p>}</article>
       <article className="privacy-note"><ShieldCheck size={22} /><div><strong>Designed around approved communication routes</strong><p>Any real messaging would use an approved platform, consent model, nominated contact record and Information Governance review.</p></div></article>
@@ -147,7 +147,7 @@ function Escalation({ patient, escalated, barrierComplete, onEscalate, onBarrier
   const timingLabel = isOverdue ? `Overdue by ${overdueMinutes} minutes` : barrierComplete ? "Barrier complete" : `Action due by ${patient.deadline}`;
   const timingValue = isOverdue ? `+${String(Math.floor(overdueMinutes / 60)).padStart(2, "0")}:${String(overdueMinutes % 60).padStart(2, "0")}` : barrierComplete ? "Done" : patient.deadline;
   return <div className="screen-stack"><section className={`overdue-card ${barrierComplete ? "resolved" : ""}`}><div className="overdue-clock">{barrierComplete ? <CheckCircle2 /> : <Clock3 />}</div><div><p className="section-kicker">{barrierComplete ? "Barrier resolved" : "Deadline monitor · " + patient.name}</p><h2>{timingLabel}</h2><p>{barrierComplete ? "The patient journey and ward board now reflect completion." : `${patient.barrier} · escalation recipient: ${patient.owner} · demo current time 11:35`}</p></div><div className="overdue-number">{timingValue}</div></section>
-    <section className="content-grid escalation-grid"><article className="panel escalation-detail"><div className="panel-heading"><div><p className="section-kicker">Barrier detail</p><h2>{patient.barrier} · {patient.name}</h2></div><StatusPill status={barrierComplete ? "Green" : patient.rag} /></div><dl className="detail-grid"><div><dt>Escalation recipient</dt><dd><Stethoscope size={18} /> {patient.owner}</dd></div><div><dt>Target completion</dt><dd><Clock3 size={18} /> {patient.expected.split(" · ")[0]} · {patient.deadline}</dd></div><div><dt>Escalation status</dt><dd><BellRing size={18} /> {barrierComplete ? "Closed" : escalated ? `Sent to ${patient.owner} · demo` : `Not sent · will go to ${patient.owner}`}</dd></div><div><dt>Patient impact</dt><dd><BedDouble size={18} /> {barrierComplete ? "Barrier no longer delaying discharge" : "Discharge cannot complete"}</dd></div></dl><div className="suggested-action"><div className="suggested-icon"><Target size={20} /></div><div><span>Who will receive this escalation?</span><strong>{barrierComplete ? "No escalation required" : `${patient.owner} — the team responsible for ${patient.barrier.toLowerCase()}.`}</strong></div></div><div className="action-row"><Button onClick={onEscalate} disabled={escalated || barrierComplete}><BellRing size={17} /> {escalated ? `Escalated to ${patient.owner} · demo` : `Escalate to ${patient.owner}`}</Button><Button variant="secondary" onClick={onBarrier} disabled={barrierComplete}><Check size={17} /> {barrierComplete ? "Barrier complete" : "Mark barrier complete"}</Button></div></article>
+    <section className="content-grid escalation-grid"><article className="panel escalation-detail"><div className="panel-heading"><div><p className="section-kicker">Barrier detail</p><h2>{patient.barrier} · {patient.name}</h2></div><StatusPill status={barrierComplete ? "Green" : patient.rag} /></div><dl className="detail-grid"><div><dt>Escalation recipient</dt><dd><Stethoscope size={18} /> {patient.owner}</dd></div><div><dt>Target completion</dt><dd><Clock3 size={18} /> {patient.expected.split(" · ")[0]} · {patient.deadline}</dd></div><div><dt>Escalation status</dt><dd><BellRing size={18} /> {barrierComplete ? "Closed" : escalated ? `Sent to ${patient.owner} · demo` : `Not sent · will go to ${patient.owner}`}</dd></div><div><dt>Patient impact</dt><dd><BedDouble size={18} /> {barrierComplete ? "Barrier no longer delaying discharge" : "Discharge cannot complete"}</dd></div></dl><div className="suggested-action"><div className="suggested-icon"><Target size={20} /></div><div><span>Who will receive this escalation?</span><strong>{barrierComplete ? "No escalation required" : `${patient.owner} — the team responsible for ${patient.barrier.toLowerCase()}.`}</strong></div></div><div className="action-row"><Button onClick={onEscalate} disabled={escalated || barrierComplete}>{escalated ? <CheckCircle2 size={17} /> : <BellRing size={17} />} {escalated ? `Escalated to ${patient.owner}` : `Escalate to ${patient.owner}`}</Button><Button variant="secondary" onClick={onBarrier} disabled={barrierComplete}><Check size={17} /> {barrierComplete ? "Barrier complete" : "Mark barrier complete"}</Button></div><div className={`escalation-check ${escalated ? "complete" : "pending"}`}>{escalated ? <CheckCircle2 size={20} /> : <Clock3 size={20} />}<div><strong>{escalated ? "Escalation sent" : "Escalation not yet sent"}</strong><span>{escalated ? `Recorded as escalated to ${patient.owner} at 11:35.` : `Will be directed to ${patient.owner}.`}</span></div></div></article>
       <aside className="panel escalation-log"><div className="panel-heading"><div><p className="section-kicker">Activity</p><h2>{patient.name} · escalation trail</h2></div></div><div className="log-list"><div><span>{patient.update.match(/\d{2}:\d{2}/)?.[0] ?? "10:18"}</span><p><strong>Latest ward update</strong>{patient.update.split(" · ")[0]}.</p></div><div><span>{patient.deadline === "Complete" ? "Done" : patient.deadline}</span><p><strong>Target review</strong>{barrierComplete ? "Action completed." : isOverdue ? "Target passed without completion." : "Completion target remains active."}</p></div><div><span>11:35</span><p><strong>HomeFlow check</strong>{barrierComplete ? "No reminder required." : `If escalated, the alert will be directed to ${patient.owner}.`}</p></div>{escalated && <div className="latest"><span>11:35</span><p><strong>Escalation to {patient.owner} logged</strong>Demonstration only — no person or system was contacted.</p></div>}</div></aside>
     </section></div>;
 }
@@ -253,6 +253,7 @@ export default function HomeFlow() {
   const [ttoComplete, setTtoComplete] = useState(false);
   const [familyState, setFamilyState] = useState<FamilyState>("awaiting");
   const [familyAlerted, setFamilyAlerted] = useState(false);
+  const [familyResponded, setFamilyResponded] = useState(false);
   const [escalated, setEscalated] = useState(false);
   const [patientUpdates, setPatientUpdates] = useState<Record<string, PatientUpdate>>({});
   const [selectedPatientId, setSelectedPatientId] = useState("margaret");
@@ -281,14 +282,15 @@ export default function HomeFlow() {
   }), [familyState, patientUpdates, ttoComplete]);
   const selectedBasePatient = basePatients.find((patient) => patient.id === selectedPatientId) ?? basePatients[0];
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
-  const selectedUpdate = selectedPatientId === "margaret" ? { barrierComplete: ttoComplete, familyState, familyAlerted } : patientUpdates[selectedPatientId];
+  const selectedUpdate = selectedPatientId === "margaret" ? { barrierComplete: ttoComplete, familyState, familyAlerted, familyResponded } : patientUpdates[selectedPatientId];
   const selectedBarrierComplete = selectedUpdate?.barrierComplete ?? selectedBasePatient.rag === "Green";
   const selectedFamilyState = selectedUpdate?.familyState ?? defaultFamilyState(selectedBasePatient);
   const selectedFamilyAlerted = selectedUpdate?.familyAlerted ?? false;
+  const selectedFamilyResponded = selectedUpdate?.familyResponded ?? false;
   const selectedEscalated = selectedPatientId === "margaret" ? escalated : patientUpdates[selectedPatientId]?.escalated ?? false;
   const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(null), 3200); }, []);
   const completeTto = useCallback(() => { setTtoComplete(true); setUpdatedAt(Date.now()); showToast("TTO marked complete — Margaret’s journey has updated."); }, [showToast]);
-  const confirmFamily = useCallback((state: "confirmed" | "support" | "contact" = "confirmed") => { setFamilyAlerted(true); setFamilyState(state); setUpdatedAt(Date.now()); showToast(state === "confirmed" ? "Collection confirmed — family readiness has updated." : state === "support" ? "Support required — the ward view has updated." : "Contact request recorded in demo mode."); }, [showToast]);
+  const confirmFamily = useCallback((state: "confirmed" | "support" | "contact" = "confirmed") => { setFamilyAlerted(true); setFamilyResponded(true); setFamilyState(state); setUpdatedAt(Date.now()); showToast(state === "confirmed" ? "Collection confirmed — family readiness has updated." : state === "support" ? "Support required — the ward view has updated." : "Contact request recorded in demo mode."); }, [showToast]);
   const completePatientBarrier = useCallback((patientId: string) => {
     if (patientId === "margaret") { completeTto(); return; }
     const patient = basePatients.find((item) => item.id === patientId);
@@ -301,7 +303,7 @@ export default function HomeFlow() {
     if (patientId === "margaret") { confirmFamily(state); return; }
     const patient = basePatients.find((item) => item.id === patientId);
     if (!patient) return;
-    setPatientUpdates((current) => ({ ...current, [patientId]: { ...current[patientId], barrierComplete: current[patientId]?.barrierComplete ?? patient.rag === "Green", familyState: state, familyAlerted: true } }));
+    setPatientUpdates((current) => ({ ...current, [patientId]: { ...current[patientId], barrierComplete: current[patientId]?.barrierComplete ?? patient.rag === "Green", familyState: state, familyAlerted: true, familyResponded: true } }));
     setUpdatedAt(Date.now());
     showToast(state === "confirmed"
       ? `${patient.name}’s collection is confirmed — the ward display has updated.`
@@ -348,7 +350,7 @@ export default function HomeFlow() {
     navigate("board");
     showToast(`${patient.name} has left the ward and was removed from live ward views.`);
   }, [familyState, navigate, patientUpdates, showToast, ttoComplete]);
-  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setFamilyAlerted(false); setEscalated(false); setPatientUpdates({}); setSelectedPatientId("margaret"); setUpdatedAt(Date.now()); setView("dashboard"); setWardDisplay(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [showToast]);
+  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setFamilyAlerted(false); setFamilyResponded(false); setEscalated(false); setPatientUpdates({}); setSelectedPatientId("margaret"); setUpdatedAt(Date.now()); setView("dashboard"); setWardDisplay(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [showToast]);
   const openWardDisplay = useCallback(() => { window.open(`${window.location.pathname}${window.location.search}#ward-display`, "homeflow-ward-display", "noopener,noreferrer"); }, []);
   const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); setView("dashboard"); setWardDisplay(false); }, []);
   useEffect(() => {
@@ -367,6 +369,7 @@ export default function HomeFlow() {
       setTtoComplete(next.ttoComplete);
       setFamilyState(next.familyState);
       setFamilyAlerted(Boolean(next.familyAlerted));
+      setFamilyResponded(Boolean(next.familyResponded));
       setEscalated(next.escalated);
       setPatientUpdates(next.patientUpdates && typeof next.patientUpdates === "object" ? next.patientUpdates : {});
       setUpdatedAt(next.updatedAt || Date.now());
@@ -397,10 +400,10 @@ export default function HomeFlow() {
       skipFirstPublishRef.current = false;
       return;
     }
-    const nextState: DemoState = { ttoComplete, familyState, familyAlerted, escalated, patientUpdates, updatedAt };
+    const nextState: DemoState = { ttoComplete, familyState, familyAlerted, familyResponded, escalated, patientUpdates, updatedAt };
     window.localStorage.setItem(DEMO_STATE_KEY, JSON.stringify(nextState));
     channelRef.current?.postMessage(nextState);
-  }, [escalated, familyAlerted, familyState, patientUpdates, ttoComplete, updatedAt]);
+  }, [escalated, familyAlerted, familyResponded, familyState, patientUpdates, ttoComplete, updatedAt]);
   useEffect(() => {
     const mc = (document as Document & { modelContext?: { registerTool: (tool: unknown, options?: { signal: AbortSignal }) => void | Promise<void> } }).modelContext;
     if (!mc?.registerTool) return;
@@ -415,7 +418,7 @@ export default function HomeFlow() {
   const content: Record<View, React.ReactNode> = {
     dashboard: <Dashboard ready={ready} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
     journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
-    family: selectedPatient ? <FamilyScreen patient={selectedPatient} familyState={selectedFamilyState} alertSent={selectedFamilyAlerted} onAlert={() => alertPatientFamily(selectedPatient.id)} onFamily={(state) => updatePatientFamily(selectedPatient.id, state)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
+    family: selectedPatient ? <FamilyScreen patient={selectedPatient} familyState={selectedFamilyState} alertSent={selectedFamilyAlerted} responded={selectedFamilyResponded} onAlert={() => alertPatientFamily(selectedPatient.id)} onFamily={(state) => updatePatientFamily(selectedPatient.id, state)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     escalation: selectedPatient ? <Escalation patient={selectedPatient} escalated={selectedEscalated} barrierComplete={selectedBarrierComplete} onEscalate={() => escalatePatient(selectedPatient.id)} onBarrier={() => completePatientBarrier(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     integration: <Integration />,
     analytics: <Analytics />,
