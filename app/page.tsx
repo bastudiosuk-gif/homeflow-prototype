@@ -82,19 +82,21 @@ function Button({ children, onClick, variant = "primary", disabled = false, acti
   };
   return <button type="button" className={`button button-${variant}`} onPointerUp={handlePointerUp} onClick={handleClick} disabled={disabled}>{children}</button>;
 }
-function KpiCard({ label, value, note, icon: Icon, tone = "blue" }: { label: string; value: string | number; note: string; icon: typeof Home; tone?: "blue" | "green" | "amber" | "red" | "purple" }) {
-  return <article className="kpi-card"><div className={`kpi-icon tone-${tone}`}><Icon size={19} /></div><div className="kpi-value">{value}</div><div className="kpi-label">{label}</div><div className="kpi-note">{note}</div></article>;
+function KpiCard({ label, value, note, icon: Icon, tone = "blue", onOpen, destination }: { label: string; value: string | number; note: string; icon: typeof Home; tone?: "blue" | "green" | "amber" | "red" | "purple"; onOpen?: () => void; destination?: string }) {
+  const content = <><div className={`kpi-icon tone-${tone}`}><Icon size={19} /></div><div className="kpi-value">{value}</div><div className="kpi-label">{label}</div><div className="kpi-note">{note}</div>{onOpen && <div className="kpi-open">Open {destination}<ArrowRight size={14} /></div>}</>;
+  if (onOpen) return <button type="button" className="kpi-card kpi-card-openable" onClick={onOpen} aria-label={`Open ${destination} for ${label}`}>{content}</button>;
+  return <article className="kpi-card">{content}</article>;
 }
 
-function Dashboard({ ready }: { ready: boolean }) {
+function Dashboard({ ready, onNavigate }: { ready: boolean; onNavigate: (view: View) => void }) {
   return <div className="screen-stack">
     <section className="kpi-grid" aria-label="Discharge metrics">
-      <KpiCard label="Expected today" value={18} note="Across 3 demo wards" icon={Users} />
-      <KpiCard label="Ready for discharge" value={ready ? 7 : 6} note={ready ? "Margaret is now ready" : "2 awaiting collection"} icon={CheckCircle2} tone="green" />
-      <KpiCard label="Outstanding barriers" value={ready ? 4 : 5} note={ready ? "1 resolved in demo" : "3 actions due by noon"} icon={AlertTriangle} tone="amber" />
-      <KpiCard label="At risk of delay" value={3} note="1 high-priority patient" icon={Activity} tone="red" />
-      <KpiCard label="Average delay" value="2.4h" note="Demo 7-day average" icon={Clock3} tone="purple" />
-      <KpiCard label="Beds potentially released" value={ready ? 13 : 12} note="By 16:00 today" icon={BedDouble} tone="green" />
+      <KpiCard label="Expected today" value={18} note="Across 3 demo wards" icon={Users} destination="ward board" onOpen={() => onNavigate("board")} />
+      <KpiCard label="Ready for discharge" value={ready ? 7 : 6} note={ready ? "Margaret is now ready" : "2 awaiting collection"} icon={CheckCircle2} tone="green" destination="ward board" onOpen={() => onNavigate("board")} />
+      <KpiCard label="Outstanding barriers" value={ready ? 4 : 5} note={ready ? "1 resolved in demo" : "3 actions due by noon"} icon={AlertTriangle} tone="amber" destination="barrier escalation" onOpen={() => onNavigate("escalation")} />
+      <KpiCard label="At risk of delay" value={3} note="1 high-priority patient" icon={Activity} tone="red" destination="barrier escalation" onOpen={() => onNavigate("escalation")} />
+      <KpiCard label="Average delay" value="2.4h" note="Demo 7-day average" icon={Clock3} tone="purple" destination="analytics" onOpen={() => onNavigate("analytics")} />
+      <KpiCard label="Beds potentially released" value={ready ? 13 : 12} note="By 16:00 today" icon={BedDouble} tone="green" destination="ward board" onOpen={() => onNavigate("board")} />
     </section>
     <section className="content-grid">
       <article className="panel bottleneck-panel"><div className="panel-heading"><div><p className="section-kicker">Operational view</p><h2>Today’s discharge bottlenecks</h2></div><span className="mini-badge">23 open actions</span></div><div className="bottleneck-list">{bottlenecks.map((item) => <div className="bar-row" key={item.label}><div className="bar-meta"><span>{item.label}</span><strong>{item.count}</strong></div><div className="bar-track"><span style={{ width: `${Math.max(item.share * 2.55, 10)}%`, background: item.color }} /></div></div>)}</div></article>
@@ -436,7 +438,7 @@ export default function HomeFlow() {
     return () => controller.abort();
   }, [completeTto, confirmFamily, navigate, resetDemo]);
   const content: Record<View, React.ReactNode> = {
-    dashboard: <Dashboard ready={ready} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    dashboard: <Dashboard ready={ready} onNavigate={navigate} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
     journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     family: selectedPatient ? <FamilyScreen patient={selectedPatient} familyState={selectedFamilyState} alertSent={selectedFamilyAlerted} responded={selectedFamilyResponded} onAlert={() => alertPatientFamily(selectedPatient.id)} onFamily={(state) => updatePatientFamily(selectedPatient.id, state)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     escalation: selectedPatient ? <Escalation patient={selectedPatient} escalated={selectedEscalated} barrierComplete={selectedBarrierComplete} onEscalate={() => escalatePatient(selectedPatient.id)} onBarrier={() => completePatientBarrier(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
