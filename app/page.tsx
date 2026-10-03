@@ -37,6 +37,11 @@ const basePatients: Patient[] = [
   { id: "elsie", name: "Elsie W.", ward: "Ward 3", bed: "Bed 04", expected: "Today · 16:00", rag: "Red", barrier: "Home equipment", owner: "Community team", deadline: "12:00", family: "Support required", update: "Delivery slot unconfirmed · 10:31" },
   { id: "alan", name: "Alan K.", ward: "Ward 3", bed: "Bed 19", expected: "Tomorrow · 10:00", rag: "Amber", barrier: "Therapy review", owner: "Physiotherapy", deadline: "15:00", family: "Awaiting response", update: "Mobility review requested · 09:55" },
   { id: "sadia", name: "Sadia N.", ward: "Ward 3", bed: "Bed 15", expected: "Today · 15:30", rag: "Amber", barrier: "Transport", owner: "Discharge hub", deadline: "13:30", family: "Not collecting", update: "Transport request accepted · 10:07" },
+  { id: "grace", name: "Grace P.", ward: "Ward 3", bed: "Bed 02", expected: "Today · 13:15", rag: "Green", barrier: "None — ready to go", owner: "Ward team", deadline: "Complete", family: "Collection confirmed", update: "Discharge medicines received · 10:50" },
+  { id: "ibrahim", name: "Ibrahim H.", ward: "Ward 3", bed: "Bed 06", expected: "Tomorrow · 11:00", rag: "Amber", barrier: "Package of care", owner: "Social care", deadline: "16:00", family: "Awaiting response", update: "Care provider contacted · 10:25" },
+  { id: "moira", name: "Moira B.", ward: "Ward 3", bed: "Bed 10", expected: "Today · 17:00", rag: "Red", barrier: "Clinical review", owner: "Medical team", deadline: "12:30", family: "Support required", update: "Senior review requested · 10:36" },
+  { id: "thomas", name: "Thomas J.", ward: "Ward 3", bed: "Bed 17", expected: "Tomorrow · 12:00", rag: "Amber", barrier: "Community nursing", owner: "Discharge hub", deadline: "14:30", family: "Ready to collect", update: "Referral awaiting acceptance · 10:14" },
+  { id: "priya", name: "Priya S.", ward: "Ward 3", bed: "Bed 21", expected: "Today · 14:45", rag: "Green", barrier: "None — ready to go", owner: "Ward team", deadline: "Complete", family: "Collection confirmed", update: "Transport and summary complete · 10:58" },
 ];
 
 const bottlenecks = [
@@ -210,7 +215,7 @@ function WardDisplay({ patients, updatedAt, onExit }: { patients: Patient[]; upd
     </section>
     <section className="ward-display-board">
       <div className="ward-display-board-heading"><div><p>LIVE COORDINATION VIEW</p><h1>Today’s ward discharge position</h1></div><div className="ward-display-legend"><span><i className="green" />Ready</span><span><i className="amber" />Action due</span><span><i className="red" />At risk</span></div></div>
-      <div className="ward-display-table" role="table" aria-label="Privacy-safe discharge board">
+      <div className={`ward-display-table ${displayPatients.length > 7 ? "dense" : ""}`} role="table" aria-label="Privacy-safe discharge board">
         <div className="ward-display-row ward-display-columns" role="row"><span>Bed / demo ID</span><span>Expected</span><span>RAG</span><span>Barrier · owner</span><span>Target</span><span>Family readiness</span></div>
         {displayPatients.map((patient) => <div className={`ward-display-row rag-${patient.rag.toLowerCase()}`} role="row" key={patient.id}>
           <div><strong>{patient.safeBed}</strong><span>{patient.demoId} · fictional identifier</span></div>
