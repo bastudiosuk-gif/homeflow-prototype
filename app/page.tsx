@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type View = "dashboard" | "board" | "journey" | "family" | "escalation" | "integration" | "analytics" | "pilot";
+type View = "dashboard" | "board" | "risk" | "journey" | "family" | "escalation" | "integration" | "analytics" | "pilot";
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
@@ -57,6 +57,7 @@ const bottlenecks = [
 const screenCopy: Record<View, { eyebrow: string; title: string; subtitle: string }> = {
   dashboard: { eyebrow: "Friday 2 October · Ward 3 demo", title: "Discharge flow, visible at a glance", subtitle: "A single coordination view bringing clinical progress, barriers and family readiness together." },
   board: { eyebrow: "Live coordination view · fictional patients", title: "Ward discharge board", subtitle: "See who is leaving, what is holding them back and who owns the next action." },
+  risk: { eyebrow: "Priority view · fictional patients", title: "Patients at risk of discharge delay", subtitle: "See every at-risk patient, the reason for concern, the responsible owner and the next required action." },
   journey: { eyebrow: "Patient journey · fictional demo patient", title: "From discharge expected to ready to leave", subtitle: "Every step, owner and deadline in one shared, easy-to-read timeline." },
   family: { eyebrow: "Simulated communication · nominated contact", title: "Help families prepare before the ward is ready", subtitle: "One clear early alert gives the likely discharge time, manages expectations and makes the family response visible to the ward." },
   escalation: { eyebrow: "Automated detection · demo only", title: "Spot overdue actions before they become lost hours", subtitle: "HomeFlow highlights the barrier, owner and next step—without contacting anyone in this prototype." },
@@ -88,13 +89,13 @@ function KpiCard({ label, value, note, icon: Icon, tone = "blue", onOpen, destin
   return <article className="kpi-card">{content}</article>;
 }
 
-function Dashboard({ ready, onNavigate }: { ready: boolean; onNavigate: (view: View) => void }) {
+function Dashboard({ ready, atRiskCount, onNavigate }: { ready: boolean; atRiskCount: number; onNavigate: (view: View) => void }) {
   return <div className="screen-stack">
     <section className="kpi-grid" aria-label="Discharge metrics">
       <KpiCard label="Expected today" value={18} note="Across 3 demo wards" icon={Users} destination="ward board" onOpen={() => onNavigate("board")} />
       <KpiCard label="Ready for discharge" value={ready ? 7 : 6} note={ready ? "Margaret is now ready" : "2 awaiting collection"} icon={CheckCircle2} tone="green" destination="ward board" onOpen={() => onNavigate("board")} />
       <KpiCard label="Outstanding barriers" value={ready ? 4 : 5} note={ready ? "1 resolved in demo" : "3 actions due by noon"} icon={AlertTriangle} tone="amber" destination="barrier escalation" onOpen={() => onNavigate("escalation")} />
-      <KpiCard label="At risk of delay" value={3} note="1 high-priority patient" icon={Activity} tone="red" destination="barrier escalation" onOpen={() => onNavigate("escalation")} />
+      <KpiCard label="At risk of delay" value={atRiskCount} note="Open the full priority list" icon={Activity} tone="red" destination="patients at risk" onOpen={() => onNavigate("risk")} />
       <KpiCard label="Average delay" value="2.4h" note="Demo 7-day average" icon={Clock3} tone="purple" destination="analytics" onOpen={() => onNavigate("analytics")} />
       <KpiCard label="Beds potentially released" value={ready ? 13 : 12} note="By 16:00 today" icon={BedDouble} tone="green" destination="ward board" onOpen={() => onNavigate("board")} />
     </section>
@@ -102,6 +103,17 @@ function Dashboard({ ready, onNavigate }: { ready: boolean; onNavigate: (view: V
       <article className="panel bottleneck-panel"><div className="panel-heading"><div><p className="section-kicker">Operational view</p><h2>Today’s discharge bottlenecks</h2></div><span className="mini-badge">23 open actions</span></div><div className="bottleneck-list">{bottlenecks.map((item) => <div className="bar-row" key={item.label}><div className="bar-meta"><span>{item.label}</span><strong>{item.count}</strong></div><div className="bar-track"><span style={{ width: `${Math.max(item.share * 2.55, 10)}%`, background: item.color }} /></div></div>)}</div></article>
       <div className="side-stack"><article className="panel readiness-panel"><div className="panel-heading compact"><div><p className="section-kicker">Family readiness</p><h2>{ready ? 79 : 71}% confirmed</h2></div><div className="readiness-ring" style={{ "--progress": `${ready ? 79 : 71}%` } as React.CSSProperties}><Users size={22} /></div></div><div className="readiness-bars"><span style={{ width: `${ready ? 79 : 71}%` }} /></div><div className="legend-row"><span><i className="dot dot-green" /> Confirmed {ready ? 11 : 10}</span><span><i className="dot dot-amber" /> Waiting 3</span><span><i className="dot dot-red" /> Support 1</span></div></article><article className="insight-card"><div className="insight-icon"><Sparkles size={20} /></div><div><p className="section-kicker">Flow insight</p><h3>Medication is today’s biggest opportunity</h3><p>Seven patients are waiting on TTO-related steps. Earlier visibility could protect up to 8.5 discharge hours.</p></div></article></div>
     </section>
+  </div>;
+}
+
+function RiskPatients({ patients, onJourney, onEscalation, onOverview }: { patients: Patient[]; onJourney: (patientId: string) => void; onEscalation: (patientId: string) => void; onOverview: () => void }) {
+  const redCount = patients.filter((patient) => patient.rag === "Red").length;
+  const amberCount = patients.filter((patient) => patient.rag === "Amber").length;
+  if (!patients.length) return <section className="panel empty-journey"><CheckCircle2 size={34} /><div><p className="section-kicker">No current risks</p><h2>No patients are currently flagged at risk</h2><p>Live discharge and barrier updates have cleared the current risk list.</p></div><Button variant="secondary" onClick={onOverview}>Return to overview</Button></section>;
+  return <div className="screen-stack">
+    <section className="risk-summary" aria-label="At-risk patient summary"><article><span>Total at risk</span><strong>{patients.length}</strong><small>Require active coordination</small></article><article className="risk-red"><span>High priority</span><strong>{redCount}</strong><small>Red discharge-risk status</small></article><article className="risk-amber"><span>Overdue barrier</span><strong>{amberCount}</strong><small>Amber but beyond target</small></article></section>
+    <section className="risk-patient-list" aria-label="Patients at risk of discharge delay">{patients.map((patient) => <article className={`risk-patient-card risk-${patient.rag.toLowerCase()}`} key={patient.id}><header><div><span className="risk-demo-id">DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>{patient.ward} · {patient.bed}</p></div><StatusPill status={patient.rag} /></header><div className="risk-detail-grid"><div><span>Expected discharge</span><strong>{patient.expected}</strong></div><div><span>Outstanding barrier</span><strong>{patient.barrier}</strong></div><div><span>Owner and target</span><strong>{patient.owner} · {patient.deadline}</strong></div><div><span>Family readiness</span><strong>{patient.family}</strong></div><div className="risk-latest"><span>Latest update</span><strong>{patient.update}</strong></div></div><footer><Button variant="secondary" onClick={() => onJourney(patient.id)}><Route size={16} /> View journey</Button><Button onClick={() => onEscalation(patient.id)}><BellRing size={16} /> Escalate to {patient.owner}</Button></footer></article>)}</section>
+    <div className="risk-privacy"><ShieldCheck size={17} /> Fictional patient names, identifiers and clinical scenarios for demonstration only.</div>
   </div>;
 }
 
@@ -299,6 +311,7 @@ export default function HomeFlow() {
       update: patientReady ? "All actions complete · just now" : barrierComplete ? "Main barrier complete · just now" : patient.update,
     };
   }), [familyState, patientUpdates, ttoComplete]);
+  const riskPatients = useMemo(() => patients.filter((patient) => patient.rag === "Red" || (patient.id === "margaret" && patient.rag !== "Green")), [patients]);
   const selectedBasePatient = basePatients.find((patient) => patient.id === selectedPatientId) ?? basePatients[0];
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
   const selectedUpdate = selectedPatientId === "margaret" ? { barrierComplete: ttoComplete, familyState, familyAlerted, familyResponded } : patientUpdates[selectedPatientId];
@@ -377,7 +390,7 @@ export default function HomeFlow() {
     const updateDisplayMode = () => {
       const hash = window.location.hash.slice(1);
       setWardDisplay(hash === "ward-display");
-      if (navItems.some((item) => item.id === hash)) setView(hash as View);
+      if (hash in screenCopy) setView(hash as View);
     };
     updateDisplayMode();
     window.addEventListener("hashchange", updateDisplayMode);
@@ -439,7 +452,8 @@ export default function HomeFlow() {
     return () => controller.abort();
   }, [completeTto, confirmFamily, navigate, resetDemo]);
   const content: Record<View, React.ReactNode> = {
-    dashboard: <Dashboard ready={ready} onNavigate={navigate} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} onNavigate={navigate} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    risk: <RiskPatients patients={riskPatients} onOverview={() => navigate("dashboard")} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onEscalation={(patientId) => { setSelectedPatientId(patientId); navigate("escalation"); }} />,
     journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     family: selectedPatient ? <FamilyScreen patient={selectedPatient} familyState={selectedFamilyState} alertSent={selectedFamilyAlerted} responded={selectedFamilyResponded} onAlert={() => alertPatientFamily(selectedPatient.id)} onFamily={(state) => updatePatientFamily(selectedPatient.id, state)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     escalation: selectedPatient ? <Escalation patient={selectedPatient} escalated={selectedEscalated} barrierComplete={selectedBarrierComplete} onEscalate={() => escalatePatient(selectedPatient.id)} onBarrier={() => completePatientBarrier(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
