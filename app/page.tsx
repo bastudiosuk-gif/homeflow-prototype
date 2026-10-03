@@ -17,8 +17,8 @@ type Patient = { id: string; name: string; ward: string; bed: string; expected: 
 type PatientUpdate = { barrierComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated?: boolean; leftWard?: boolean };
 type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; updatedAt: number };
 
-const DEMO_STATE_KEY = "homeflow-demo-state-v1";
-const DEMO_CHANNEL = "homeflow-demo-sync";
+const DEMO_STATE_KEY = "homeflow-demo-state-v2";
+const DEMO_CHANNEL = "homeflow-demo-sync-v2";
 
 const navItems: { id: View; label: string; short: string; icon: typeof Home }[] = [
   { id: "dashboard", label: "Executive overview", short: "Overview", icon: LayoutDashboard },
