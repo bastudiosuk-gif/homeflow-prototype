@@ -3,27 +3,33 @@
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BedDouble, BellRing, Check,
   CheckCircle2, ChevronRight, CircleGauge, Clock3,
-  DoorOpen, FileCheck2, HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
+  ClipboardCheck, DoorOpen, FileCheck2, HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
   Maximize2, MessageSquareText, Minimize2, MonitorUp, PanelLeftClose, PanelLeftOpen, PhoneCall, Pill, Play, Presentation,
   RefreshCcw, Route, ShieldCheck, Sparkles, Stethoscope, Target, TrendingDown,
   UserRoundCheck, Users, X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type View = "dashboard" | "board" | "risk" | "journey" | "family" | "escalation" | "integration" | "analytics" | "pilot";
+type View = "dashboard" | "board" | "risk" | "journey" | "pharmacy" | "community" | "family" | "escalation" | "integration" | "analytics" | "pilot";
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
+type TtoStage = "awaiting-prescription" | "submitted" | "received" | "clarification" | "preparing" | "ready" | "delivered";
+type TtoRecord = { stage: TtoStage; submittedAt: string; target: string; priority: "Routine" | "High" | "Urgent"; assignee: string; note: string };
+type HandoverStatus = "draft" | "sent" | "read" | "acknowledged" | "clarification" | "accepted";
+type HandoverRecord = { team: string; change: string; action: string; due: string; authorisedBy: string; status: HandoverStatus; note: string };
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
-type PatientUpdate = { barrierComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated?: boolean; leftWard?: boolean };
-type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; updatedAt: number };
+type PatientUpdate = { barrierComplete?: boolean; familyState?: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated?: boolean; leftWard?: boolean };
+type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; ttoRecords?: Record<string, TtoRecord>; handoverRecords?: Record<string, HandoverRecord>; updatedAt: number };
 
-const DEMO_STATE_KEY = "homeflow-demo-state-v2";
-const DEMO_CHANNEL = "homeflow-demo-sync-v2";
+const DEMO_STATE_KEY = "homeflow-demo-state-v3";
+const DEMO_CHANNEL = "homeflow-demo-sync-v3";
 
 const navItems: { id: View; label: string; short: string; icon: typeof Home }[] = [
   { id: "dashboard", label: "Executive overview", short: "Overview", icon: LayoutDashboard },
   { id: "board", label: "Ward discharge board", short: "Ward board", icon: ListChecks },
   { id: "journey", label: "Patient journey", short: "Journey", icon: Route },
+  { id: "pharmacy", label: "Pharmacy TTO queue", short: "Pharmacy", icon: Pill },
+  { id: "community", label: "Community handover", short: "Handover", icon: HeartHandshake },
   { id: "family", label: "Family communication", short: "Family", icon: MessageSquareText },
   { id: "escalation", label: "Barrier escalation", short: "Escalation", icon: BellRing },
   { id: "integration", label: "Existing systems", short: "Integration", icon: Link2 },
@@ -44,6 +50,35 @@ const basePatients: Patient[] = [
   { id: "priya", name: "Priya S.", ward: "Ward 3", bed: "Bed 21", expected: "Today · 14:45", rag: "Green", barrier: "None — ready to go", owner: "Ward team", deadline: "Complete", family: "Collection confirmed", update: "Transport and summary complete · 10:58" },
 ];
 
+const initialTtoRecords: Record<string, TtoRecord> = {
+  margaret: { stage: "submitted", submittedAt: "10:18", target: "12:30", priority: "High", assignee: "Main dispensary", note: "Expected discharge today at 14:00." },
+  grace: { stage: "ready", submittedAt: "09:24", target: "11:30", priority: "Routine", assignee: "Main dispensary", note: "Ready for ward collection." },
+  sadia: { stage: "received", submittedAt: "10:07", target: "13:00", priority: "High", assignee: "Main dispensary", note: "Transport booked for 15:30." },
+  priya: { stage: "preparing", submittedAt: "09:58", target: "12:45", priority: "Routine", assignee: "Dispensary bench 2", note: "Clinical screen complete." },
+  alan: { stage: "awaiting-prescription", submittedAt: "Not submitted", target: "15:00", priority: "Routine", assignee: "Medical team", note: "Ward has identified likely TTO requirement." },
+};
+
+const initialHandoverRecords: Record<string, HandoverRecord> = {
+  margaret: { team: "Community Diabetes Team", change: "Diabetes management plan updated during admission", action: "Review the verified discharge medication record and monitoring plan; contact the patient within 48 hours.", due: "14 Oct · 12:00", authorisedBy: "Diabetes Specialist Nurse", status: "draft", note: "Clinical detail remains in the approved discharge record." },
+  thomas: { team: "Community Nursing Team", change: "Wound-care plan revised before discharge", action: "Acknowledge the handover and confirm the first planned community visit.", due: "12 Oct · 10:00", authorisedBy: "Tissue Viability Nurse", status: "sent", note: "Sent in demonstration mode at 10:26." },
+  ibrahim: { team: "Community Care Coordinator", change: "Package-of-care requirements updated", action: "Confirm whether the revised support plan can start tomorrow morning.", due: "Today · 16:00", authorisedBy: "Discharge Coordinator", status: "read", note: "Read by receiving team at 11:18." },
+};
+
+const ttoStageCopy: Record<TtoStage, { label: string; owner: string; tone: Rag }> = {
+  "awaiting-prescription": { label: "Awaiting prescription", owner: "Medical team", tone: "Amber" },
+  submitted: { label: "Submitted to pharmacy", owner: "Pharmacy", tone: "Amber" },
+  received: { label: "Received by pharmacy", owner: "Pharmacy", tone: "Amber" },
+  clarification: { label: "Clarification required", owner: "Prescriber", tone: "Red" },
+  preparing: { label: "In preparation", owner: "Pharmacy", tone: "Amber" },
+  ready: { label: "Ready for collection", owner: "Ward team", tone: "Green" },
+  delivered: { label: "Delivered to ward", owner: "Ward team", tone: "Green" },
+};
+
+const handoverStatusCopy: Record<HandoverStatus, { label: string; tone: Rag }> = {
+  draft: { label: "Draft", tone: "Amber" }, sent: { label: "Sent", tone: "Amber" }, read: { label: "Read", tone: "Amber" },
+  acknowledged: { label: "Acknowledged", tone: "Green" }, clarification: { label: "Clarification requested", tone: "Red" }, accepted: { label: "Action accepted", tone: "Green" },
+};
+
 const bottlenecks = [
   { label: "TTO / medication", count: 7, share: 31, color: "#005eb8" },
   { label: "Transport", count: 5, share: 22, color: "#2a8c80" },
@@ -59,6 +94,8 @@ const screenCopy: Record<View, { eyebrow: string; title: string; subtitle: strin
   board: { eyebrow: "Live coordination view · fictional patients", title: "Ward discharge board", subtitle: "See who is leaving, what is holding them back and who owns the next action." },
   risk: { eyebrow: "Priority view · fictional patients", title: "Patients at risk of discharge delay", subtitle: "See every at-risk patient, the reason for concern, the responsible owner and the next required action." },
   journey: { eyebrow: "Patient journey · fictional demo patient", title: "From discharge expected to ready to leave", subtitle: "Every step, owner and deadline in one shared, easy-to-read timeline." },
+  pharmacy: { eyebrow: "Role view · pharmacy operations · fictional patients", title: "TTO work, visible from request to ward", subtitle: "Prioritise expected discharges, update progress and return clarification to the right prescriber without relying on telephone chasing." },
+  community: { eyebrow: "Care transition · simulated secure workflow", title: "Close the loop with community teams", subtitle: "Send a structured, verified update and see whether the receiving service has read, acknowledged and accepted the next action." },
   family: { eyebrow: "Simulated communication · nominated contact", title: "Help families prepare before the ward is ready", subtitle: "One clear early alert gives the likely discharge time, manages expectations and makes the family response visible to the ward." },
   escalation: { eyebrow: "Automated detection · demo only", title: "Spot overdue actions before they become lost hours", subtitle: "HomeFlow highlights the barrier, owner and next step—without contacting anyone in this prototype." },
   integration: { eyebrow: "Proposed coordination layer · not a replacement system", title: "Connect and enhance what already exists", subtitle: "HomeFlow brings selected information into a simplified view while each source system keeps its role." },
@@ -89,15 +126,15 @@ function KpiCard({ label, value, note, icon: Icon, tone = "blue", onOpen, destin
   return <article className="kpi-card">{content}</article>;
 }
 
-function Dashboard({ ready, atRiskCount, onNavigate }: { ready: boolean; atRiskCount: number; onNavigate: (view: View) => void }) {
+function Dashboard({ ready, atRiskCount, openTtos, pendingHandovers, onNavigate }: { ready: boolean; atRiskCount: number; openTtos: number; pendingHandovers: number; onNavigate: (view: View) => void }) {
   return <div className="screen-stack">
     <section className="kpi-grid" aria-label="Discharge metrics">
       <KpiCard label="Expected today" value={18} note="Across 3 demo wards" icon={Users} destination="ward board" onOpen={() => onNavigate("board")} />
       <KpiCard label="Ready for discharge" value={ready ? 7 : 6} note={ready ? "Margaret is now ready" : "2 awaiting collection"} icon={CheckCircle2} tone="green" destination="ward board" onOpen={() => onNavigate("board")} />
       <KpiCard label="Outstanding barriers" value={ready ? 4 : 5} note={ready ? "1 resolved in demo" : "3 actions due by noon"} icon={AlertTriangle} tone="amber" destination="barrier escalation" onOpen={() => onNavigate("escalation")} />
       <KpiCard label="At risk of delay" value={atRiskCount} note="Open the full priority list" icon={Activity} tone="red" destination="patients at risk" onOpen={() => onNavigate("risk")} />
-      <KpiCard label="Average delay" value="2.4h" note="Demo 7-day average" icon={Clock3} tone="purple" destination="analytics" onOpen={() => onNavigate("analytics")} />
-      <KpiCard label="Beds potentially released" value={ready ? 13 : 12} note="By 16:00 today" icon={BedDouble} tone="green" destination="ward board" onOpen={() => onNavigate("board")} />
+      <KpiCard label="TTOs in progress" value={openTtos} note="Shared pharmacy work queue" icon={Pill} tone="purple" destination="pharmacy queue" onOpen={() => onNavigate("pharmacy")} />
+      <KpiCard label="Community handovers" value={pendingHandovers} note="Awaiting closed-loop confirmation" icon={HeartHandshake} tone="green" destination="community handover" onOpen={() => onNavigate("community")} />
     </section>
     <section className="content-grid">
       <article className="panel bottleneck-panel"><div className="panel-heading"><div><p className="section-kicker">Operational view</p><h2>Today’s discharge bottlenecks</h2></div><span className="mini-badge">23 open actions</span></div><div className="bottleneck-list">{bottlenecks.map((item) => <div className="bar-row" key={item.label}><div className="bar-meta"><span>{item.label}</span><strong>{item.count}</strong></div><div className="bar-track"><span style={{ width: `${Math.max(item.share * 2.55, 10)}%`, background: item.color }} /></div></div>)}</div></article>
@@ -132,7 +169,7 @@ function WardBoard({ patients, onOpen }: { patients: Patient[]; onOpen: (patient
   </div>;
 }
 
-function Journey({ patient, barrierComplete, familyState, onBarrier, onFamily, onPatientLeft }: { patient: Patient; barrierComplete: boolean; familyState: FamilyState; onBarrier: () => void; onFamily: () => void; onPatientLeft: () => void }) {
+function Journey({ patient, barrierComplete, familyState, tto, handover, onBarrier, onFamily, onPatientLeft, onPharmacy, onCommunity }: { patient: Patient; barrierComplete: boolean; familyState: FamilyState; tto?: TtoRecord; handover?: HandoverRecord; onBarrier: () => void; onFamily: () => void; onPatientLeft: () => void; onPharmacy: () => void; onCommunity: () => void }) {
   const familyConfirmed = familyState === "confirmed" || patient.family.toLowerCase().includes("confirmed");
   const ready = barrierComplete && familyConfirmed;
   const initials = patient.name.split(" ").map((part) => part[0]).join("").replace(".", "").slice(0, 2).toUpperCase();
@@ -146,7 +183,7 @@ function Journey({ patient, barrierComplete, familyState, onBarrier, onFamily, o
   ];
   return <div className="screen-stack"><section className={`barrier-hero ${ready ? "resolved" : ""}`}><div className="barrier-symbol">{ready ? <CheckCircle2 /> : <Pill />}</div><div className="barrier-copy"><p className="section-kicker">{ready ? "Ready to go" : "Main barrier right now"}</p><h2>{ready ? "All discharge actions complete" : barrierComplete ? "Family collection confirmation" : patient.barrier}</h2><p>{ready ? `${patient.name} is now Green. The ward board and ward display have updated.` : barrierComplete ? "The main barrier is complete. The ward is waiting for family or transport confirmation." : `Action is owned by ${patient.owner} with a target of ${patient.deadline}. Completing it updates every HomeFlow view.`}</p></div><StatusPill status={ready ? "Green" : patient.rag} /></section>
     <section className="journey-layout"><article className="panel journey-panel"><div className="panel-heading"><div><p className="section-kicker">Discharge timeline</p><h2>{steps.length} coordinated steps</h2></div><span className="mini-badge">{steps.filter((s) => s.done).length} of {steps.length} complete</span></div><div className="timeline">{steps.map((step, index) => <div className={`timeline-step ${step.done ? "done" : "pending"}`} key={step.label}><div className="timeline-marker">{step.done ? <Check size={16} /> : index + 1}</div><div className="timeline-content"><h3>{step.label}</h3><p>{step.owner}</p></div><div className="timeline-meta"><span>{step.meta}</span>{step.action && <Button onClick={onBarrier}>Mark barrier complete</Button>}{step.familyAction && <Button variant="secondary" onClick={onFamily}>Confirm collection</Button>}</div></div>)}</div></article>
-      <aside className="patient-card panel"><div className="avatar">{initials}</div><h2>{patient.name}</h2><p className="muted">Fictional demo patient</p><dl><div><dt>Location</dt><dd>{patient.ward} · {patient.bed}</dd></div><div><dt>Expected discharge</dt><dd>{patient.expected}</dd></div><div><dt>Pathway</dt><dd>Pathway 0 · Home</dd></div><div><dt>Family readiness</dt><dd>{patient.family}</dd></div></dl><div className="completion"><div><span>Journey completion</span><strong>{Math.round((steps.filter((s) => s.done).length / steps.length) * 100)}%</strong></div><div className="progress"><span style={{ width: `${(steps.filter((s) => s.done).length / steps.length) * 100}%` }} /></div></div><div className="departure-action"><DoorOpen size={20} /><div><strong>Patient departure</strong><span>{ready ? "Remove this patient from live ward views." : "Complete the journey before recording departure."}</span></div><Button variant="secondary" onClick={onPatientLeft} disabled={!ready}>Patient has left ward</Button></div></aside>
+      <aside className="patient-card panel"><div className="avatar">{initials}</div><h2>{patient.name}</h2><p className="muted">Fictional demo patient</p><dl><div><dt>Location</dt><dd>{patient.ward} · {patient.bed}</dd></div><div><dt>Expected discharge</dt><dd>{patient.expected}</dd></div><div><dt>Pathway</dt><dd>Pathway 0 · Home</dd></div><div><dt>Family readiness</dt><dd>{patient.family}</dd></div></dl>{tto && <button className="journey-link-card" onClick={onPharmacy}><Pill size={18} /><span><small>TTO workflow</small><strong>{ttoStageCopy[tto.stage].label}</strong></span><ChevronRight size={17} /></button>}{handover && <button className="journey-link-card" onClick={onCommunity}><HeartHandshake size={18} /><span><small>Community handover</small><strong>{handoverStatusCopy[handover.status].label}</strong></span><ChevronRight size={17} /></button>}<div className="completion"><div><span>Journey completion</span><strong>{Math.round((steps.filter((s) => s.done).length / steps.length) * 100)}%</strong></div><div className="progress"><span style={{ width: `${(steps.filter((s) => s.done).length / steps.length) * 100}%` }} /></div></div><div className="departure-action"><DoorOpen size={20} /><div><strong>Patient departure</strong><span>{ready ? "Remove this patient from live ward views." : "Complete the journey before recording departure."}</span></div><Button variant="secondary" onClick={onPatientLeft} disabled={!ready}>Patient has left ward</Button></div></aside>
     </section></div>;
 }
 
@@ -182,20 +219,57 @@ function Escalation({ patient, escalated, barrierComplete, onEscalate, onBarrier
     </section></div>;
 }
 
+function PharmacyQueue({ patients, records, onAdvance, onClarification, onJourney }: { patients: Patient[]; records: Record<string, TtoRecord>; onAdvance: (patientId: string) => void; onClarification: (patientId: string) => void; onJourney: (patientId: string) => void }) {
+  const queue = Object.entries(records).flatMap(([patientId, record]) => {
+    const patient = patients.find((item) => item.id === patientId);
+    return patient ? [{ patient, record }] : [];
+  });
+  const urgent = queue.filter(({ record }) => record.priority === "Urgent" || record.stage === "clarification").length;
+  const ready = queue.filter(({ record }) => record.stage === "ready").length;
+  const nextAction = (stage: TtoStage) => stage === "awaiting-prescription" ? "Confirm submitted" : stage === "submitted" ? "Accept into pharmacy" : stage === "received" ? "Start preparation" : stage === "clarification" ? "Clarification resolved" : stage === "preparing" ? "Mark ready" : stage === "ready" ? "Confirm ward delivery" : "Delivered";
+  return <div className="screen-stack">
+    <section className="workflow-summary" aria-label="Pharmacy queue summary"><article><Pill /><div><span>Active TTO queue</span><strong>{queue.filter(({ record }) => record.stage !== "delivered").length}</strong><small>Fictional patients requiring coordination</small></div></article><article className="summary-alert"><AlertTriangle /><div><span>Action required</span><strong>{urgent}</strong><small>Urgent or awaiting clarification</small></div></article><article className="summary-ready"><CheckCircle2 /><div><span>Ready for ward</span><strong>{ready}</strong><small>Awaiting collection or delivery</small></div></article></section>
+    <section className="role-scope"><ShieldCheck size={20} /><div><strong>Operational coordination only</strong><p>Prescribing, clinical screening and dispensing remain in the approved clinical and pharmacy systems. This prototype records workflow status only.</p></div></section>
+    <section className="pharmacy-queue" aria-label="Fictional TTO pharmacy worklist">{queue.map(({ patient, record }) => {
+      const stage = ttoStageCopy[record.stage];
+      const complete = record.stage === "delivered";
+      return <article className={`panel pharmacy-card stage-${stage.tone.toLowerCase()}`} key={patient.id}><header><div><span className="queue-id">DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>{patient.ward} · {patient.bed} · expected {patient.expected.toLowerCase()}</p></div><StatusPill status={stage.tone} /></header><div className="pharmacy-stage"><div className="stage-icon">{complete ? <CheckCircle2 /> : record.stage === "clarification" ? <AlertTriangle /> : <Pill />}</div><div><span>Current TTO stage</span><strong>{stage.label}</strong><small>Current owner: {stage.owner}</small></div></div><dl className="queue-details"><div><dt>Submitted</dt><dd>{record.submittedAt}</dd></div><div><dt>Target</dt><dd>{record.target}</dd></div><div><dt>Priority</dt><dd>{record.priority}</dd></div><div><dt>Assigned</dt><dd>{record.assignee}</dd></div></dl><p className="queue-note">{record.note}</p><footer><Button variant="quiet" onClick={() => onJourney(patient.id)}><Route size={16} /> Patient journey</Button><Button variant="secondary" onClick={() => onClarification(patient.id)} disabled={complete || record.stage === "clarification"}><MessageSquareText size={16} /> Request clarification</Button><Button variant={complete ? "success" : "primary"} onClick={() => onAdvance(patient.id)} disabled={complete}>{complete ? <CheckCircle2 size={16} /> : <ArrowRight size={16} />} {nextAction(record.stage)}</Button></footer></article>;
+    })}</section>
+    <div className="risk-privacy"><RefreshCcw size={17} /> Every demo update is time-stamped and immediately synchronised with the ward views in this browser.</div>
+  </div>;
+}
+
+function CommunityHandover({ patients, records, onAdvance, onClarification, onJourney }: { patients: Patient[]; records: Record<string, HandoverRecord>; onAdvance: (patientId: string) => void; onClarification: (patientId: string) => void; onJourney: (patientId: string) => void }) {
+  const items = Object.entries(records).flatMap(([patientId, record]) => {
+    const patient = patients.find((item) => item.id === patientId);
+    return patient ? [{ patient, record }] : [];
+  });
+  const nextAction = (status: HandoverStatus) => status === "draft" ? "Send verified update" : status === "sent" ? "Simulate read" : status === "read" ? "Acknowledge receipt" : status === "acknowledged" ? "Accept next action" : status === "clarification" ? "Send amended update" : "Accepted";
+  return <div className="screen-stack">
+    <section className="handover-principle"><HeartHandshake size={28} /><div><p className="section-kicker">Closed-loop transfer of care</p><h2>The handover is complete only when the receiving team acknowledges the action.</h2><p>Clinical details remain in the approved record. HomeFlow makes responsibility, acknowledgement and follow-up visible.</p></div></section>
+    <section className="handover-list" aria-label="Fictional community handovers">{items.map(({ patient, record }) => {
+      const status = handoverStatusCopy[record.status];
+      const complete = record.status === "accepted";
+      return <article className="panel handover-card" key={patient.id}><header><div><span className="queue-id">{patient.ward} · {patient.bed} · DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>Receiving service: <strong>{record.team}</strong></p></div><StatusPill status={status.tone} /></header><div className="handover-body"><div className="handover-change"><span>Verified change</span><h3>{record.change}</h3><p>{record.note}</p></div><div className="handover-action"><span>Action requested</span><p>{record.action}</p></div><dl><div><dt>Authorised by</dt><dd>{record.authorisedBy}</dd></div><div><dt>Response due</dt><dd>{record.due}</dd></div><div><dt>Communication status</dt><dd>{status.label}</dd></div></dl></div><footer><Button variant="quiet" onClick={() => onJourney(patient.id)}><Route size={16} /> Patient journey</Button><Button variant="secondary" onClick={() => onClarification(patient.id)} disabled={complete || record.status === "clarification"}><MessageSquareText size={16} /> Request clarification</Button><Button variant={complete ? "success" : "primary"} onClick={() => onAdvance(patient.id)} disabled={complete}>{complete ? <CheckCircle2 size={16} /> : <ClipboardCheck size={16} />} {nextAction(record.status)}</Button></footer></article>;
+    })}</section>
+    <section className="approval-banner"><ShieldCheck size={22} /><div><strong>Demonstration workflow only—no community service has received a message.</strong><p>A live service would require approved identity, transfer-of-care standards, data-sharing arrangements, clinical-safety assurance and write-back to the formal patient record.</p></div></section>
+  </div>;
+}
+
 const systems = [
-  { name: "EPR / PAS", icon: FileCheck2, tag: "Existing capability", copy: "Patient demographics, ward, bed and expected discharge", side: "left" },
-  { name: "OPTICA", icon: ListChecks, tag: "Existing capability", copy: "Discharge pathway, barriers, tasks and ownership", side: "left" },
-  { name: "Home Safe / Care Point", icon: HeartHandshake, tag: "Requires confirmation", copy: "Community pathway status and handover milestones", side: "left" },
+  { name: "Nervecentre / EPR / PAS", icon: FileCheck2, tag: "Existing capability", copy: "Patient demographics, ward, bed and available discharge information", side: "left" },
+  { name: "NHS FDP / OPTICA", icon: ListChecks, tag: "Proposed connection", copy: "Potential discharge pathway, tasks and ownership—subject to Trust adoption", side: "left" },
+  { name: "Pharmacy systems", icon: Pill, tag: "Requires confirmation", copy: "Future source for prescribing and dispensing milestones if interfaces permit", side: "left" },
   { name: "DrDoctor / approved messaging", icon: MessageSquareText, tag: "Proposed connection", copy: "Patient and nominated family communications", side: "right" },
-  { name: "Power BI / Analytics", icon: BarChart3, tag: "Proposed connection", copy: "Trends, delays, bottlenecks and evaluation", side: "right" },
-  { name: "Hospital at Home", icon: Home, tag: "Requires confirmation", copy: "Existing pathway referral and acceptance status", side: "right" },
+  { name: "Community care systems", icon: HeartHandshake, tag: "Proposed connection", copy: "Verified handover, acknowledgement and acceptance milestones", side: "right" },
+  { name: "Approved analytics", icon: BarChart3, tag: "Requires confirmation", copy: "Aggregated pilot measures—not the live operational workflow", side: "right" },
 ];
 function SystemCard({ name, icon: Icon, tag, copy }: { name: string; icon: typeof Home; tag: string; copy: string }) {
   const tone = tag === "Existing capability" ? "existing" : tag === "Proposed connection" ? "proposed" : "confirm";
   return <article className="system-card"><div className="system-icon"><Icon size={20} /></div><div><span className={`system-tag ${tone}`}>{tag}</span><h3>{name}</h3><p>{copy}</p></div></article>;
 }
 function Integration() {
-  return <div className="screen-stack"><section className="integration-statement"><Link2 size={24} /><div><strong>HomeFlow is designed to connect and enhance existing capability, not replace existing systems.</strong><p>This diagram shows a proposed future state. No technical integration is claimed or included in this prototype.</p></div></section><section className="integration-canvas panel"><div className="system-column">{systems.filter((s) => s.side === "left").map((s) => <SystemCard key={s.name} {...s} />)}</div><div className="flow-lines left-lines"><span /><span /><span /></div><article className="homeflow-hub"><div className="hub-mark"><Home size={27} /><span><i /><i /><i /></span></div><p>PROPOSED COORDINATION LAYER</p><h2>HomeFlow</h2><ul><li><Check size={15} /> Simplified ward view</li><li><Check size={15} /> Barrier coordination</li><li><Check size={15} /> Family readiness</li><li><Check size={15} /> Timely prompts</li></ul><small>Prototype only</small></article><div className="flow-lines right-lines"><span /><span /><span /></div><div className="system-column">{systems.filter((s) => s.side === "right").map((s) => <SystemCard key={s.name} {...s} />)}</div></section><section className="approval-banner"><ShieldCheck size={22} /><div><strong>Integration subject to Digital, Information Governance and supplier approval.</strong><p>Data flows, interoperability standards, lawful basis, DPIA, clinical safety, access controls and supplier feasibility would all require formal confirmation.</p></div></section><div className="integration-legend"><span><i className="legend-existing" /> Existing capability</span><span><i className="legend-proposed" /> Proposed connection</span><span><i className="legend-confirm" /> Requires confirmation</span></div></div>;
+  return <div className="screen-stack"><section className="integration-statement"><Link2 size={24} /><div><strong>HomeFlow is designed to connect and enhance existing capability, not replace existing systems.</strong><p>This diagram shows a proposed future state. No technical integration is claimed or included in this prototype.</p></div></section><section className="integration-canvas panel"><div className="system-column">{systems.filter((s) => s.side === "left").map((s) => <SystemCard key={s.name} {...s} />)}</div><div className="flow-lines left-lines"><span /><span /><span /></div><article className="homeflow-hub"><div className="hub-mark"><Home size={27} /><span><i /><i /><i /></span></div><p>PROPOSED COORDINATION LAYER</p><h2>HomeFlow</h2><ul><li><Check size={15} /> Simplified ward view</li><li><Check size={15} /> TTO coordination</li><li><Check size={15} /> Community handover</li><li><Check size={15} /> Family readiness</li></ul><small>Prototype only</small></article><div className="flow-lines right-lines"><span /><span /><span /></div><div className="system-column">{systems.filter((s) => s.side === "right").map((s) => <SystemCard key={s.name} {...s} />)}</div></section><section className="approval-banner"><ShieldCheck size={22} /><div><strong>Integration subject to Digital, Information Governance and supplier approval.</strong><p>Data flows, interoperability standards, lawful basis, DPIA, clinical safety, access controls and supplier feasibility would all require formal confirmation.</p></div></section><div className="integration-legend"><span><i className="legend-existing" /> Existing capability</span><span><i className="legend-proposed" /> Proposed connection</span><span><i className="legend-confirm" /> Requires confirmation</span></div></div>;
 }
 
 function Analytics() {
@@ -205,7 +279,7 @@ function Analytics() {
 }
 
 function Pilot() {
-  const measures = ["Time from discharge-ready to leaving ward", "Percentage discharged earlier in the day", "Number of delayed discharges", "Recorded reason for delay", "Family readiness", "Staff experience"];
+  const measures = ["TTO request-to-ready time", "Telephone chases avoided", "Clarification response time", "Community handovers acknowledged", "Family readiness", "Discharge-ready to leaving time"];
   return <div className="screen-stack"><section className="pilot-intro"><div className="pilot-number">01</div><div><p className="section-kicker">A deliberately small first step</p><h2>One ward. Eight to twelve weeks. A clear learning question.</h2><p>Can a shared coordination and family-readiness view reduce avoidable discharge hours without duplicating the systems teams already use?</p></div></section><section className="pilot-grid"><article className="panel pilot-plan"><div className="panel-heading"><div><p className="section-kicker">Proposed pilot</p><h2>Build evidence before scale</h2></div><Play size={24} /></div><div className="pilot-steps">{[["01","1 ward","Start with one engaged clinical area and a defined cohort."],["02","8–12 weeks","Enough time to establish a baseline, test and learn."],["03","Existing technology","Use approved capability where possible; avoid unnecessary procurement."],["04","Listen and adapt","Gather staff, patient and family feedback throughout."],["05","Evaluate","Compare baseline with post-pilot performance."]].map((s) => <div key={s[0]}><span>{s[0]}</span><strong>{s[1]}</strong><p>{s[2]}</p></div>)}</div></article><article className="panel measures-panel"><div className="panel-heading"><div><p className="section-kicker">Measures that matter</p><h2>Balanced pilot evaluation</h2></div></div><div className="measure-list">{measures.map((m, i) => <div key={m}><span>{String(i + 1).padStart(2, "0")}</span><p>{m}</p><CheckCircle2 size={18} /></div>)}</div></article></section><section className="ask-card"><div className="ask-icon"><Sparkles /></div><div><p className="section-kicker">The ask</p><h2>Support to develop, integrate and evaluate a small HomeFlow pilot.</h2><p>Bring clinical, operational, digital, IG and improvement colleagues together to test feasibility safely.</p></div><div className="ask-outcomes"><span>Develop</span><ArrowRight /><span>Integrate</span><ArrowRight /><span>Evaluate</span></div></section></div>;
 }
 
@@ -286,6 +360,8 @@ export default function HomeFlow() {
   const [familyResponded, setFamilyResponded] = useState(false);
   const [escalated, setEscalated] = useState(false);
   const [patientUpdates, setPatientUpdates] = useState<Record<string, PatientUpdate>>({});
+  const [ttoRecords, setTtoRecords] = useState<Record<string, TtoRecord>>(initialTtoRecords);
+  const [handoverRecords, setHandoverRecords] = useState<Record<string, HandoverRecord>>(initialHandoverRecords);
   const [selectedPatientId, setSelectedPatientId] = useState("margaret");
   const [toast, setToast] = useState<string | null>(null);
   const [wardDisplay, setWardDisplay] = useState(false);
@@ -297,20 +373,25 @@ export default function HomeFlow() {
   const ready = ttoComplete && familyState === "confirmed";
   const patients = useMemo(() => basePatients.filter((patient) => !patientUpdates[patient.id]?.leftWard).map((patient) => {
     const update = patient.id === "margaret" ? { barrierComplete: ttoComplete, familyState } : patientUpdates[patient.id];
-    if (!update) return patient;
-    const barrierComplete = update.barrierComplete || patient.rag === "Green";
-    const familyReady = update.familyState === "confirmed" || defaultFamilyState(patient) === "confirmed";
+    const tto = ttoRecords[patient.id];
+    if (!update && !tto) return patient;
+    const barrierComplete = Boolean(update?.barrierComplete) || patient.rag === "Green";
+    const familyReady = update?.familyState === "confirmed" || defaultFamilyState(patient) === "confirmed";
     const patientReady = barrierComplete && familyReady;
-    return {
+    const coordinatedPatient = {
       ...patient,
       rag: patientReady ? "Green" as Rag : barrierComplete ? "Amber" as Rag : patient.rag,
       barrier: patientReady ? "None — ready to go" : barrierComplete ? "Family confirmation" : patient.barrier,
       owner: patientReady ? "Ward team" : barrierComplete ? "Ward coordinator" : patient.owner,
       deadline: patientReady ? "Complete" : barrierComplete ? "13:00" : patient.deadline,
-      family: update.familyState === "confirmed" ? "Collection confirmed" : update.familyState === "support" ? "Support required" : update.familyState === "contact" ? "Contact requested" : patient.family,
+      family: update?.familyState === "confirmed" ? "Collection confirmed" : update?.familyState === "support" ? "Support required" : update?.familyState === "contact" ? "Contact requested" : patient.family,
       update: patientReady ? "All actions complete · just now" : barrierComplete ? "Main barrier complete · just now" : patient.update,
     };
-  }), [familyState, patientUpdates, ttoComplete]);
+    if (tto?.stage === "clarification") return { ...coordinatedPatient, rag: "Red" as Rag, barrier: "TTO clarification", owner: "Medical team", deadline: tto.target, update: "Pharmacy requested clarification · just now" };
+    if (patient.id === "margaret" && tto && tto.stage !== "delivered") return { ...coordinatedPatient, rag: "Amber" as Rag, barrier: `TTO · ${ttoStageCopy[tto.stage].label}`, owner: ttoStageCopy[tto.stage].owner, deadline: tto.target, update: `${ttoStageCopy[tto.stage].label} · just now` };
+    if (tto && tto.stage !== "delivered") return { ...coordinatedPatient, update: `TTO: ${ttoStageCopy[tto.stage].label} · just now` };
+    return coordinatedPatient;
+  }), [familyState, patientUpdates, ttoComplete, ttoRecords]);
   const riskPatients = useMemo(() => patients.filter((patient) => patient.rag === "Red" || (patient.id === "margaret" && patient.rag !== "Green")), [patients]);
   const selectedBasePatient = basePatients.find((patient) => patient.id === selectedPatientId) ?? basePatients[0];
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
@@ -320,9 +401,23 @@ export default function HomeFlow() {
   const selectedFamilyAlerted = selectedUpdate?.familyAlerted ?? false;
   const selectedFamilyResponded = selectedUpdate?.familyResponded ?? false;
   const selectedEscalated = selectedPatientId === "margaret" ? escalated : patientUpdates[selectedPatientId]?.escalated ?? false;
+  const openTtoCount = Object.values(ttoRecords).filter((record) => record.stage !== "delivered").length;
+  const pendingHandoverCount = Object.values(handoverRecords).filter((record) => record.status !== "accepted").length;
   const showToast = useCallback((message: string) => { setToast(message); window.setTimeout(() => setToast(null), 3200); }, []);
   const markUpdated = useCallback(() => { const nextUpdatedAt = Date.now(); latestUpdatedAtRef.current = nextUpdatedAt; setUpdatedAt(nextUpdatedAt); }, []);
-  const completeTto = useCallback(() => { setTtoComplete(true); markUpdated(); showToast("TTO marked complete — Margaret’s journey has updated."); }, [markUpdated, showToast]);
+  const completeTto = useCallback(() => {
+    setTtoComplete(true);
+    setTtoRecords((current) => ({
+      ...current,
+      margaret: {
+        ...current.margaret,
+        stage: "delivered",
+        note: "Medicines delivered to the ward. Ready for discharge checks.",
+      },
+    }));
+    markUpdated();
+    showToast("TTO delivered — Margaret’s pharmacy queue and journey have updated.");
+  }, [markUpdated, showToast]);
   const confirmFamily = useCallback((state: "confirmed" | "support" | "contact" = "confirmed") => { setFamilyAlerted(true); setFamilyResponded(true); setFamilyState(state); markUpdated(); showToast(state === "confirmed" ? "Collection confirmed — family readiness has updated." : state === "support" ? "Support required — the ward view has updated." : "Contact request recorded in demo mode."); }, [markUpdated, showToast]);
   const completePatientBarrier = useCallback((patientId: string) => {
     if (patientId === "margaret") { completeTto(); return; }
@@ -370,6 +465,41 @@ export default function HomeFlow() {
     markUpdated();
     showToast(`${patient.name}’s demo escalation to ${patient.owner} was logged — nobody was contacted.`);
   }, [markUpdated, showToast]);
+  const advanceTto = useCallback((patientId: string) => {
+    const record = ttoRecords[patientId];
+    const patient = basePatients.find((item) => item.id === patientId);
+    if (!record || !patient || record.stage === "delivered") return;
+    const sequence: TtoStage[] = ["awaiting-prescription", "submitted", "received", "preparing", "ready", "delivered"];
+    const nextStage = record.stage === "clarification" ? "received" : sequence[Math.min(sequence.indexOf(record.stage) + 1, sequence.length - 1)];
+    setTtoRecords((current) => ({ ...current, [patientId]: { ...current[patientId], stage: nextStage, assignee: ttoStageCopy[nextStage].owner, note: nextStage === "clarification" ? current[patientId].note : `${ttoStageCopy[nextStage].label} · updated in demo mode.` } }));
+    if (patientId === "margaret" && nextStage === "delivered") setTtoComplete(true);
+    markUpdated();
+    showToast(`${patient.name}: ${ttoStageCopy[nextStage].label}. Ward and pharmacy views are synchronised.`);
+  }, [markUpdated, showToast, ttoRecords]);
+  const requestTtoClarification = useCallback((patientId: string) => {
+    const patient = basePatients.find((item) => item.id === patientId);
+    if (!patient) return;
+    setTtoRecords((current) => ({ ...current, [patientId]: { ...current[patientId], stage: "clarification", assignee: "Medical team", note: "Pharmacy needs the prescriber to clarify the verified prescription before preparation can continue." } }));
+    markUpdated();
+    showToast(`${patient.name}: clarification returned to the medical team.`);
+  }, [markUpdated, showToast]);
+  const advanceHandover = useCallback((patientId: string) => {
+    const patient = basePatients.find((item) => item.id === patientId);
+    const record = handoverRecords[patientId];
+    if (!patient || !record || record.status === "accepted") return;
+    const sequence: HandoverStatus[] = ["draft", "sent", "read", "acknowledged", "accepted"];
+    const nextStatus = record.status === "clarification" ? "sent" : sequence[Math.min(sequence.indexOf(record.status) + 1, sequence.length - 1)];
+    setHandoverRecords((current) => ({ ...current, [patientId]: { ...current[patientId], status: nextStatus, note: nextStatus === "sent" ? "Verified update sent in demonstration mode—no real service contacted." : `${handoverStatusCopy[nextStatus].label} · simulated at 11:35.` } }));
+    markUpdated();
+    showToast(`${patient.name}: community handover ${handoverStatusCopy[nextStatus].label.toLowerCase()}.`);
+  }, [handoverRecords, markUpdated, showToast]);
+  const requestHandoverClarification = useCallback((patientId: string) => {
+    const patient = basePatients.find((item) => item.id === patientId);
+    if (!patient) return;
+    setHandoverRecords((current) => ({ ...current, [patientId]: { ...current[patientId], status: "clarification", note: "Receiving team requested clarification from the ward. No clinical instruction has been changed." } }));
+    markUpdated();
+    showToast(`${patient.name}: community team clarification request recorded.`);
+  }, [markUpdated, showToast]);
   const navigate = useCallback((next: View) => { setView(next); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
   const recordPatientLeft = useCallback((patientId: string) => {
     const patient = basePatients.find((item) => item.id === patientId);
@@ -383,7 +513,7 @@ export default function HomeFlow() {
     navigate("board");
     showToast(`${patient.name} has left the ward and was removed from live ward views.`);
   }, [familyState, markUpdated, navigate, patientUpdates, showToast, ttoComplete]);
-  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setFamilyAlerted(false); setFamilyResponded(false); setEscalated(false); setPatientUpdates({}); setSelectedPatientId("margaret"); markUpdated(); setView("dashboard"); setWardDisplay(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [markUpdated, showToast]);
+  const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setFamilyAlerted(false); setFamilyResponded(false); setEscalated(false); setPatientUpdates({}); setTtoRecords(initialTtoRecords); setHandoverRecords(initialHandoverRecords); setSelectedPatientId("margaret"); markUpdated(); setView("dashboard"); setWardDisplay(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [markUpdated, showToast]);
   const openWardDisplay = useCallback(() => { window.open(`${window.location.pathname}${window.location.search}#ward-display`, "homeflow-ward-display", "noopener,noreferrer"); }, []);
   const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); setView("dashboard"); setWardDisplay(false); }, []);
   useEffect(() => {
@@ -408,6 +538,8 @@ export default function HomeFlow() {
       setFamilyResponded(Boolean(next.familyResponded));
       setEscalated(next.escalated);
       setPatientUpdates(next.patientUpdates && typeof next.patientUpdates === "object" ? next.patientUpdates : {});
+      setTtoRecords(next.ttoRecords && typeof next.ttoRecords === "object" ? next.ttoRecords : initialTtoRecords);
+      setHandoverRecords(next.handoverRecords && typeof next.handoverRecords === "object" ? next.handoverRecords : initialHandoverRecords);
       setUpdatedAt(incomingUpdatedAt);
     };
     const readStoredState = () => {
@@ -436,10 +568,10 @@ export default function HomeFlow() {
       skipFirstPublishRef.current = false;
       return;
     }
-    const nextState: DemoState = { ttoComplete, familyState, familyAlerted, familyResponded, escalated, patientUpdates, updatedAt };
+    const nextState: DemoState = { ttoComplete, familyState, familyAlerted, familyResponded, escalated, patientUpdates, ttoRecords, handoverRecords, updatedAt };
     window.localStorage.setItem(DEMO_STATE_KEY, JSON.stringify(nextState));
     channelRef.current?.postMessage(nextState);
-  }, [escalated, familyAlerted, familyResponded, familyState, patientUpdates, ttoComplete, updatedAt]);
+  }, [escalated, familyAlerted, familyResponded, familyState, handoverRecords, patientUpdates, ttoComplete, ttoRecords, updatedAt]);
   useEffect(() => {
     const mc = (document as Document & { modelContext?: { registerTool: (tool: unknown, options?: { signal: AbortSignal }) => void | Promise<void> } }).modelContext;
     if (!mc?.registerTool) return;
@@ -452,9 +584,11 @@ export default function HomeFlow() {
     return () => controller.abort();
   }, [completeTto, confirmFamily, navigate, resetDemo]);
   const content: Record<View, React.ReactNode> = {
-    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} onNavigate={navigate} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} openTtos={openTtoCount} pendingHandovers={pendingHandoverCount} onNavigate={navigate} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
     risk: <RiskPatients patients={riskPatients} onOverview={() => navigate("dashboard")} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onEscalation={(patientId) => { setSelectedPatientId(patientId); navigate("escalation"); }} />,
-    journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
+    journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} tto={ttoRecords[selectedPatient.id]} handover={handoverRecords[selectedPatient.id]} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} onPharmacy={() => navigate("pharmacy")} onCommunity={() => navigate("community")} /> : <EmptyJourney onBoard={() => navigate("board")} />,
+    pharmacy: <PharmacyQueue patients={patients} records={ttoRecords} onAdvance={advanceTto} onClarification={requestTtoClarification} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    community: <CommunityHandover patients={patients} records={handoverRecords} onAdvance={advanceHandover} onClarification={requestHandoverClarification} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
     family: selectedPatient ? <FamilyScreen patient={selectedPatient} familyState={selectedFamilyState} alertSent={selectedFamilyAlerted} responded={selectedFamilyResponded} onAlert={() => alertPatientFamily(selectedPatient.id)} onFamily={(state) => updatePatientFamily(selectedPatient.id, state)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     escalation: selectedPatient ? <Escalation patient={selectedPatient} escalated={selectedEscalated} barrierComplete={selectedBarrierComplete} onEscalate={() => escalatePatient(selectedPatient.id)} onBarrier={() => completePatientBarrier(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     integration: <Integration />,
@@ -464,9 +598,9 @@ export default function HomeFlow() {
   if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>HomeFlow Prototype — Demonstration Data</strong><span>No real patient data, messaging or live system integration</span></div>
     <aside className="sidebar"><div className="brand"><div className="brand-mark"><Home size={22} /><span><i /><i /><i /></span></div>{sidebarOpen && <div><strong>HomeFlow</strong><span>Discharge coordination</span></div>}</div><nav aria-label="Main navigation">{navItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)} title={item.label}><Icon size={19} />{sidebarOpen && <span>{item.short}</span>}</button>; })}</nav><div className="sidebar-bottom"><button className="demo-reset" onClick={resetDemo}><RefreshCcw size={18} />{sidebarOpen && <span>Reset demo</span>}</button><div className="not-nhs"><ShieldCheck size={17} />{sidebarOpen && <span>Independent innovation concept<br />Not an official NHS product</span>}</div></div></aside>
-    <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button><div className="mobile-brand" aria-label="HomeFlow discharge coordination"><div className="mobile-brand-mark"><Home size={20} /><span><i /><i /><i /></span></div><div><strong>HomeFlow</strong><span>Discharge coordination</span></div></div><div className="topbar-context"><strong>Northview NHS Trust</strong><span>Fictional demonstration environment</span></div><div className="topbar-actions"><button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button><div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated 11:35</span></div></div></header>
+    <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button><div className="mobile-brand" aria-label="HomeFlow discharge coordination"><div className="mobile-brand-mark"><Home size={20} /><span><i /><i /><i /></span></div><div><strong>HomeFlow</strong><span>Discharge coordination</span></div></div><div className="topbar-context"><strong>Northview NHS Trust</strong><span>Fictional demonstration environment</span></div><div className="topbar-actions"><button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button><div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div></div></header>
     <main className="main-content"><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>
-    <div className="mobile-nav">{navItems.slice(0, 5).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}</div>
+    <div className="mobile-nav">{navItems.filter((item) => ["dashboard", "board", "pharmacy", "community", "family"].includes(item.id)).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}</div>
     {toast && <div className="toast" role="status"><CheckCircle2 size={19} /><span>{toast}</span><button onClick={() => setToast(null)} aria-label="Dismiss"><X size={16} /></button></div>}
   </div>;
 }
