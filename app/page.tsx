@@ -411,7 +411,7 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
         <p>HomeFlow makes discharge readiness, outstanding barriers, accountable owners and family communication visible in one coordinated view.</p>
         <div className="landing-actions">
           <button className="access-primary" onClick={onLogin}><LogIn size={19} /> Sign in to the demo <ArrowRight size={18} /></button>
-          <span><LockKeyhole size={15} /> Simulated role access — no real credentials</span>
+          <span><LockKeyhole size={15} /> Protected prototype access · sign-in required</span>
         </div>
       </div>
       <div className="landing-brand-card" aria-label="HomeFlow coordinated discharge pathway">
@@ -430,7 +430,7 @@ function LoginScreen({ code, error, onCodeChange, onSubmit, onBack }: { code: st
   return <main className="access-shell login-screen">
     <section className="login-brand-panel">
       <HomeFlowLogo inverse />
-      <div><p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p><h1>The right information, visible to the right team.</h1><p>Choose a demonstration role to enter the relevant HomeFlow workspace.</p></div>
+      <div><p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p><h1>The right information, visible to the right team.</h1><p>Authorised access to the HomeFlow demonstration workspace.</p></div>
       <div className="login-safety"><ShieldCheck size={20} /><div><strong>Safe demonstration environment</strong><span>Fictional patients only. No real authentication, messaging or live Trust connections.</span></div></div>
     </section>
     <section className="login-form-panel">
