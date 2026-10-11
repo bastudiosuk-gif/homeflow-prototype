@@ -11,7 +11,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type View = "dashboard" | "board" | "risk" | "journey" | "pharmacy" | "community" | "family" | "escalation" | "integration" | "analytics" | "pilot";
-type AccessView = "landing" | "login" | "app";
+type AccessView = "login" | "app";
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type TtoStage = "awaiting-prescription" | "submitted" | "received" | "clarification" | "preparing" | "ready" | "delivered";
@@ -393,48 +393,21 @@ function defaultFamilyState(patient: Patient): FamilyState {
   return "awaiting";
 }
 
-function HomeFlowLogo({ inverse = false }: { inverse?: boolean }) {
-  return <div className={`access-logo ${inverse ? "inverse" : ""}`} aria-label="HomeFlow">
-    <div className="access-logo-mark"><Home size={30} /><span><i /><i /><i /></span></div>
-    <div><strong>HomeFlow</strong><span>Discharge coordination</span></div>
+function HomeFlowLogo() {
+  return <div className="access-logo" aria-label="HomeFlow">
+    <span className="access-logo-image" aria-hidden="true" style={{ backgroundImage: "url('./homeflow-logo.png')" }} />
   </div>;
 }
 
-function LandingScreen({ onLogin }: { onLogin: () => void }) {
-  return <main className="access-shell landing-screen">
-    <div className="access-background" aria-hidden="true"><i /><i /><i /></div>
-    <header className="access-header"><HomeFlowLogo inverse /><span><ShieldCheck size={16} /> Prototype / Demonstration Data Only</span></header>
-    <section className="landing-hero">
-      <div className="landing-copy">
-        <p className="access-kicker">ONE VIEW · ONE TEAM · ONE PLAN</p>
-        <h1>Preparing the patient, the ward and the family for discharge.</h1>
-        <p>HomeFlow makes discharge readiness, outstanding barriers, accountable owners and family communication visible in one coordinated view.</p>
-        <div className="landing-actions">
-          <button className="access-primary" onClick={onLogin}><LogIn size={19} /> Sign in to the demo <ArrowRight size={18} /></button>
-          <span><LockKeyhole size={15} /> Protected prototype access · sign-in required</span>
-        </div>
-      </div>
-      <div className="landing-brand-card" aria-label="HomeFlow coordinated discharge pathway">
-        <HomeFlowLogo />
-        <p>One coordinated pathway from clinical readiness to a safe, prepared discharge.</p>
-        <div className="landing-pathway"><span><Stethoscope size={19} /> Patient ready</span><ArrowRight size={17} /><span><ListChecks size={19} /> Actions owned</span><ArrowRight size={17} /><span><HeartHandshake size={19} /> Family prepared</span></div>
-        <div className="landing-lock"><LockKeyhole size={21} /><div><strong>Information is behind sign-in</strong><span>No ward, patient or operational information is shown on this public welcome page.</span></div></div>
-        <small><ShieldCheck size={14} /> Prototype access gate · Demonstration data only</small>
-      </div>
-    </section>
-    <footer className="access-footer"><span>Independent innovation concept · Not an official NHS product</span><span>HomeFlow Dragons’ Den 2026</span></footer>
-  </main>;
-}
-
-function LoginScreen({ code, error, onCodeChange, onSubmit, onBack }: { code: string; error: string; onCodeChange: (code: string) => void; onSubmit: () => void; onBack: () => void }) {
+function LoginScreen({ code, error, onCodeChange, onSubmit }: { code: string; error: string; onCodeChange: (code: string) => void; onSubmit: () => void }) {
   return <main className="access-shell login-screen">
     <section className="login-brand-panel">
-      <HomeFlowLogo inverse />
-      <div><p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p><h1>The right information, visible to the right team.</h1><p>Authorised access to the HomeFlow demonstration workspace.</p></div>
+      <HomeFlowLogo />
+      <div><p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p><h1>Preparing every discharge, together.</h1><p>A single view of readiness, barriers, ownership and family preparation.</p></div>
       <div className="login-safety"><ShieldCheck size={20} /><div><strong>Safe demonstration environment</strong><span>Fictional patients only. No real authentication, messaging or live Trust connections.</span></div></div>
     </section>
     <section className="login-form-panel">
-      <button className="login-back" onClick={onBack}><ChevronRight size={17} /> Back to welcome</button>
+      <div className="login-page-badge"><ShieldCheck size={15} /> Prototype / Demonstration Data Only</div>
       <form className="login-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
         <div className="login-icon"><LockKeyhole size={23} /></div>
         <p className="access-kicker">HOMEFLOW DEMO ACCESS</p>
@@ -446,13 +419,13 @@ function LoginScreen({ code, error, onCodeChange, onSubmit, onBack }: { code: st
         <button className="access-primary login-submit" type="submit"><LogIn size={19} /> Sign in to HomeFlow <ArrowRight size={18} /></button>
         <p className="login-disclaimer"><Info size={15} /> A production version would require Trust-approved identity, role permissions and audit controls.</p>
       </form>
-      <p className="login-footer">HomeFlow Prototype · Demonstration Data Only</p>
+      <p className="login-footer">Independent innovation concept · Not an official NHS product</p>
     </section>
   </main>;
 }
 
 export default function HomeFlow() {
-  const [accessView, setAccessView] = useState<AccessView>(() => typeof window !== "undefined" && window.localStorage.getItem(DEMO_SESSION_KEY) === "active" ? "app" : "landing");
+  const [accessView, setAccessView] = useState<AccessView>(() => typeof window !== "undefined" && window.localStorage.getItem(DEMO_SESSION_KEY) === "active" ? "app" : "login");
   const [demoAccessCode, setDemoAccessCode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [view, setView] = useState<View>("dashboard");
@@ -712,7 +685,7 @@ export default function HomeFlow() {
     window.localStorage.removeItem(DEMO_SESSION_KEY);
     setDemoAccessCode("");
     setLoginError("");
-    setAccessView("landing");
+    setAccessView("login");
     setView("dashboard");
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
     window.scrollTo({ top: 0 });
@@ -819,8 +792,7 @@ export default function HomeFlow() {
     analytics: <Analytics />,
     pilot: <Pilot />,
   };
-  if (accessView === "landing") return <LandingScreen onLogin={() => { setLoginError(""); setAccessView("login"); }} />;
-  if (accessView === "login") return <LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} onBack={() => { setLoginError(""); setAccessView("landing"); }} />;
+  if (accessView === "login") return <LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} />;
   if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   const pharmacyWorkspace = view === "pharmacy";
   return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"} ${pharmacyWorkspace ? "pharmacy-mode" : "ward-mode"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>HomeFlow Prototype — Demonstration Data</strong><span>No real patient data, messaging or live system integration</span></div>
