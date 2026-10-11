@@ -401,26 +401,26 @@ function HomeFlowLogo() {
 
 function LoginScreen({ code, error, onCodeChange, onSubmit }: { code: string; error: string; onCodeChange: (code: string) => void; onSubmit: () => void }) {
   return <main className="access-shell login-screen">
-    <section className="login-brand-panel">
-      <HomeFlowLogo />
-      <div><p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p><h1>Preparing every discharge, together.</h1><p>A single view of readiness, barriers, ownership and family preparation.</p></div>
-      <div className="login-safety"><ShieldCheck size={20} /><div><strong>Safe demonstration environment</strong><span>Fictional patients only. No real authentication, messaging or live Trust connections.</span></div></div>
-    </section>
-    <section className="login-form-panel">
-      <div className="login-page-badge"><ShieldCheck size={15} /> Prototype / Demonstration Data Only</div>
+    <div className="login-atmosphere" aria-hidden="true"><i /><i /><i /></div>
+    <div className="login-page-badge"><ShieldCheck size={15} /> Prototype / Demonstration Data Only</div>
+    <section className="login-unified">
+      <header className="login-unified-header">
+        <HomeFlowLogo />
+        <p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p>
+        <h1>Preparing every discharge, together.</h1>
+        <p>A clear, shared view of readiness, barriers, ownership and family preparation.</p>
+      </header>
       <form className="login-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
-        <div className="login-icon"><LockKeyhole size={23} /></div>
-        <p className="access-kicker">HOMEFLOW DEMO ACCESS</p>
-        <h2>Welcome back</h2>
-        <p className="login-intro">Sign in with the single authorised demonstration account to view HomeFlow information.</p>
+        <div className="login-card-heading"><div className="login-icon"><LockKeyhole size={21} /></div><div><p className="access-kicker">SECURE DEMO ACCESS</p><h2>Welcome back</h2></div></div>
+        <p className="login-intro">Use the authorised demonstration account to enter HomeFlow.</p>
         <label className="access-field"><span>Official email</span><div><input type="email" value={OFFICIAL_EMAIL} readOnly autoComplete="off" /><UserRoundCheck size={17} /></div><small>This prototype accepts this account only.</small></label>
         <label className="access-field"><span>Password</span><div><input type="password" value={code} onChange={(event) => onCodeChange(event.target.value)} autoComplete="off" aria-describedby="demo-password-help" /><LockKeyhole size={17} /></div><small id="demo-password-help">Enter the password supplied by the HomeFlow owner.</small></label>
         {error && <p className="login-error" role="alert"><AlertTriangle size={16} /> {error}</p>}
         <button className="access-primary login-submit" type="submit"><LogIn size={19} /> Sign in to HomeFlow <ArrowRight size={18} /></button>
-        <p className="login-disclaimer"><Info size={15} /> A production version would require Trust-approved identity, role permissions and audit controls.</p>
+        <div className="login-assurance"><ShieldCheck size={17} /><div><strong>Safe demonstration environment</strong><span>Fictional patients only · No live Trust connections</span></div></div>
       </form>
-      <p className="login-footer">Independent innovation concept · Not an official NHS product</p>
     </section>
+    <footer className="login-footer"><span>Independent innovation concept · Not an official NHS product</span><span>Production use requires Trust-approved identity and access controls</span></footer>
   </main>;
 }
 
