@@ -517,7 +517,7 @@ export default function HomeFlow() {
     showToast(`${patient.name}’s nominated contact has been alerted in demo mode.`);
   }, [appendActivity, markUpdated, showToast]);
   const escalatePatient = useCallback((patientId: string) => {
-    const patient = basePatients.find((item) => item.id === patientId);
+    const patient = patients.find((item) => item.id === patientId) ?? basePatients.find((item) => item.id === patientId);
     if (!patient) return;
     if (patientId === "margaret") setEscalated(true);
     else setPatientUpdates((current) => ({ ...current, [patientId]: {
@@ -529,14 +529,14 @@ export default function HomeFlow() {
     appendActivity(patientId, [{ kind: "escalation", action: `Escalated to ${patient.owner}`, actor: "Ward coordinator · Demo", detail: `${patient.barrier} requires action by the responsible team. No real alert was sent.`, previous: "Not escalated", current: "Sent · awaiting acknowledgement" }]);
     markUpdated();
     showToast(`${patient.name}’s demo escalation to ${patient.owner} was logged — nobody was contacted.`);
-  }, [appendActivity, markUpdated, showToast]);
+  }, [appendActivity, markUpdated, patients, showToast]);
   const acknowledgeEscalation = useCallback((patientId: string) => {
-    const patient = basePatients.find((item) => item.id === patientId);
+    const patient = patients.find((item) => item.id === patientId) ?? basePatients.find((item) => item.id === patientId);
     if (!patient) return;
     appendActivity(patientId, [{ kind: "acknowledgement", action: `${patient.owner} acknowledged`, actor: `${patient.owner} · Demo`, detail: "The responsible team confirmed receipt and accepted ownership of the next action.", previous: "Sent · awaiting acknowledgement", current: "Acknowledged · action in progress" }]);
     markUpdated();
     showToast(`${patient.name}: ${patient.owner} acknowledged the escalation in demonstration mode.`);
-  }, [appendActivity, markUpdated, showToast]);
+  }, [appendActivity, markUpdated, patients, showToast]);
   const advanceTto = useCallback((patientId: string) => {
     const record = ttoRecords[patientId];
     const patient = basePatients.find((item) => item.id === patientId);
