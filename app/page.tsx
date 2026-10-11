@@ -16,7 +16,7 @@ type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type TtoStage = "awaiting-prescription" | "submitted" | "received" | "clarification" | "preparing" | "ready" | "delivered";
 type TtoRecord = { stage: TtoStage; submittedAt: string; target: string; priority: "Routine" | "High" | "Urgent"; assignee: string; note: string };
 type HandoverStatus = "draft" | "sent" | "read" | "acknowledged" | "clarification" | "accepted";
-type HandoverRecord = { team: string; change: string; action: string; due: string; authorisedBy: string; status: HandoverStatus; note: string };
+type HandoverRecord = { team: string; hasChanges: boolean; change: string; action: string; due: string; authorisedBy: string; status: HandoverStatus; note: string };
 type Patient = { id: string; name: string; ward: string; bed: string; expected: string; rag: Rag; barrier: string; owner: string; deadline: string; family: string; update: string };
 type PatientUpdate = { barrierComplete?: boolean; familyState?: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated?: boolean; leftWard?: boolean };
 type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted?: boolean; familyResponded?: boolean; escalated: boolean; patientUpdates?: Record<string, PatientUpdate>; ttoRecords?: Record<string, TtoRecord>; handoverRecords?: Record<string, HandoverRecord>; updatedAt: number };
@@ -60,9 +60,9 @@ const initialTtoRecords: Record<string, TtoRecord> = {
 };
 
 const initialHandoverRecords: Record<string, HandoverRecord> = {
-  margaret: { team: "Community Diabetes Team", change: "Diabetes management plan updated during admission", action: "Review the verified discharge medication record and monitoring plan; contact the patient within 48 hours.", due: "14 Oct · 12:00", authorisedBy: "Diabetes Specialist Nurse", status: "draft", note: "Clinical detail remains in the approved discharge record." },
-  thomas: { team: "Community Nursing Team", change: "Wound-care plan revised before discharge", action: "Acknowledge the handover and confirm the first planned community visit.", due: "12 Oct · 10:00", authorisedBy: "Tissue Viability Nurse", status: "sent", note: "Sent in demonstration mode at 10:26." },
-  ibrahim: { team: "Community Care Coordinator", change: "Package-of-care requirements updated", action: "Confirm whether the revised support plan can start tomorrow morning.", due: "Today · 16:00", authorisedBy: "Discharge Coordinator", status: "read", note: "Read by receiving team at 11:18." },
+  margaret: { team: "Community Diabetes Team", hasChanges: true, change: "Diabetes management plan updated during admission", action: "Review the verified discharge medication record and monitoring plan; contact the patient within 48 hours.", due: "14 Oct · 12:00", authorisedBy: "Diabetes Specialist Nurse", status: "draft", note: "Clinical detail remains in the approved discharge record." },
+  thomas: { team: "Community Nursing Team", hasChanges: true, change: "Wound-care plan revised before discharge", action: "Acknowledge the handover and confirm the first planned community visit.", due: "12 Oct · 10:00", authorisedBy: "Tissue Viability Nurse", status: "sent", note: "Sent in demonstration mode at 10:26." },
+  ibrahim: { team: "Community Care Coordinator", hasChanges: true, change: "Package-of-care requirements updated", action: "Confirm whether the revised support plan can start tomorrow morning.", due: "Today · 16:00", authorisedBy: "Discharge Coordinator", status: "read", note: "Read by receiving team at 11:18." },
 };
 
 const receivingTeams = [
@@ -250,7 +250,7 @@ function PharmacyQueue({ patients, records, onAdvance, onClarification }: { pati
   </div>;
 }
 
-function CommunityHandover({ patients, records, onAdvance, onClarification, onJourney, onTeamChange }: { patients: Patient[]; records: Record<string, HandoverRecord>; onAdvance: (patientId: string) => void; onClarification: (patientId: string) => void; onJourney: (patientId: string) => void; onTeamChange: (patientId: string, team: string) => void }) {
+function CommunityHandover({ patients, records, onAdvance, onClarification, onJourney, onTeamChange, onChangesChoice, onChangeText }: { patients: Patient[]; records: Record<string, HandoverRecord>; onAdvance: (patientId: string) => void; onClarification: (patientId: string) => void; onJourney: (patientId: string) => void; onTeamChange: (patientId: string, team: string) => void; onChangesChoice: (patientId: string, hasChanges: boolean) => void; onChangeText: (patientId: string, change: string) => void }) {
   const items = Object.entries(records).flatMap(([patientId, record]) => {
     const patient = patients.find((item) => item.id === patientId);
     return patient ? [{ patient, record }] : [];
@@ -261,7 +261,8 @@ function CommunityHandover({ patients, records, onAdvance, onClarification, onJo
     <section className="handover-list" aria-label="Fictional community handovers">{items.map(({ patient, record }) => {
       const status = handoverStatusCopy[record.status];
       const complete = record.status === "accepted";
-      return <article className="panel handover-card" key={patient.id}><header><div><span className="queue-id">{patient.ward} · {patient.bed} · DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>Receiving service: <strong>{record.team}</strong></p></div><StatusPill status={status.tone} /></header><div className="handover-body"><label className="receiving-team-field"><span>Choose receiving team</span><select value={record.team} onChange={(event) => onTeamChange(patient.id, event.target.value)} aria-label={`Receiving team for ${patient.name}`}>{receivingTeams.map((team) => <option value={team} key={team}>{team}</option>)}</select><small>Changing the team returns this handover to Draft so it can be checked before sending.</small></label><div className="handover-change"><span>Verified change</span><h3>{record.change}</h3><p>{record.note}</p></div><div className="handover-action"><span>Action requested</span><p>{record.action}</p></div><dl><div><dt>Authorised by</dt><dd>{record.authorisedBy}</dd></div><div><dt>Response due</dt><dd>{record.due}</dd></div><div><dt>Communication status</dt><dd>{status.label}</dd></div></dl></div><footer><Button variant="quiet" onClick={() => onJourney(patient.id)}><Route size={16} /> Patient journey</Button><Button variant="secondary" onClick={() => onClarification(patient.id)} disabled={complete || record.status === "clarification"}><MessageSquareText size={16} /> Request clarification</Button><Button variant={complete ? "success" : "primary"} onClick={() => onAdvance(patient.id)} disabled={complete}>{complete ? <CheckCircle2 size={16} /> : <ClipboardCheck size={16} />} {nextAction(record.status)}</Button></footer></article>;
+      const hasChanges = record.hasChanges !== false;
+      return <article className="panel handover-card" key={patient.id}><header><div><span className="queue-id">{patient.ward} · {patient.bed} · DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>Receiving service: <strong>{record.team}</strong></p></div><StatusPill status={status.tone} /></header><div className="handover-body"><label className="receiving-team-field"><span>Choose receiving team</span><select value={record.team} onChange={(event) => onTeamChange(patient.id, event.target.value)} aria-label={`Receiving team for ${patient.name}`}>{receivingTeams.map((team) => <option value={team} key={team}>{team}</option>)}</select><small>Changing the team returns this handover to Draft so it can be checked before sending.</small></label><label className="handover-change-choice"><span>Changes to communicate?</span><select value={hasChanges ? "yes" : "no"} onChange={(event) => onChangesChoice(patient.id, event.target.value === "yes")} aria-label={`Changes to communicate for ${patient.name}`}><option value="yes">Yes — add the changes</option><option value="no">No changes</option></select></label>{hasChanges ? <label className="handover-change-editor"><span>What has changed?</span><textarea value={record.change} onChange={(event) => onChangeText(patient.id, event.target.value)} rows={4} placeholder="Describe the verified change for the receiving team" aria-label={`Describe changes for ${patient.name}`} /><small>Use concise, verified information. The formal clinical record remains the source of truth.</small></label> : null}<div className="handover-action"><span>Action requested</span><p>{record.action}</p></div><dl><div><dt>Authorised by</dt><dd>{record.authorisedBy}</dd></div><div><dt>Response due</dt><dd>{record.due}</dd></div><div><dt>Communication status</dt><dd>{status.label}</dd></div></dl></div><footer><Button variant="quiet" onClick={() => onJourney(patient.id)}><Route size={16} /> Patient journey</Button><Button variant="secondary" onClick={() => onClarification(patient.id)} disabled={complete || record.status === "clarification"}><MessageSquareText size={16} /> Request clarification</Button><Button variant={complete ? "success" : "primary"} onClick={() => onAdvance(patient.id)} disabled={complete}>{complete ? <CheckCircle2 size={16} /> : <ClipboardCheck size={16} />} {nextAction(record.status)}</Button></footer></article>;
     })}</section>
     <section className="approval-banner"><ShieldCheck size={22} /><div><strong>Demonstration workflow only—no community service has received a message.</strong><p>A live service would require approved identity, transfer-of-care standards, data-sharing arrangements, clinical-safety assurance and write-back to the formal patient record.</p></div></section>
   </div>;
@@ -526,6 +527,37 @@ export default function HomeFlow() {
     markUpdated();
     showToast(`${patient.name}: receiving team changed to ${team}. Handover returned to Draft.`);
   }, [markUpdated, showToast]);
+  const updateHandoverChangesChoice = useCallback((patientId: string, hasChanges: boolean) => {
+    const patient = basePatients.find((item) => item.id === patientId);
+    if (!patient) return;
+    setHandoverRecords((current) => ({
+      ...current,
+      [patientId]: {
+        ...current[patientId],
+        hasChanges,
+        status: "draft",
+        note: hasChanges
+          ? "Changes selected. Review the statement before sending."
+          : "No changes selected in demonstration mode.",
+      },
+    }));
+    markUpdated();
+    showToast(`${patient.name}: ${hasChanges ? "change details opened" : "no changes selected"}. Handover returned to Draft.`);
+  }, [markUpdated, showToast]);
+  const updateHandoverChangeText = useCallback((patientId: string, change: string) => {
+    if (!basePatients.some((item) => item.id === patientId)) return;
+    setHandoverRecords((current) => ({
+      ...current,
+      [patientId]: {
+        ...current[patientId],
+        hasChanges: true,
+        change,
+        status: "draft",
+        note: "Change statement edited in demonstration mode. Review before sending.",
+      },
+    }));
+    markUpdated();
+  }, [markUpdated]);
   const navigate = useCallback((next: View) => { setView(next); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
   const recordPatientLeft = useCallback((patientId: string) => {
     const patient = basePatients.find((item) => item.id === patientId);
@@ -614,7 +646,7 @@ export default function HomeFlow() {
     risk: <RiskPatients patients={riskPatients} onOverview={() => navigate("dashboard")} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onEscalation={(patientId) => { setSelectedPatientId(patientId); navigate("escalation"); }} />,
     journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} tto={ttoRecords[selectedPatient.id]} handover={handoverRecords[selectedPatient.id]} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} onCommunity={() => navigate("community")} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     pharmacy: <PharmacyQueue patients={patients} records={ttoRecords} onAdvance={advanceTto} onClarification={requestTtoClarification} />,
-    community: <CommunityHandover patients={patients} records={handoverRecords} onAdvance={advanceHandover} onClarification={requestHandoverClarification} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onTeamChange={updateHandoverTeam} />,
+    community: <CommunityHandover patients={patients} records={handoverRecords} onAdvance={advanceHandover} onClarification={requestHandoverClarification} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onTeamChange={updateHandoverTeam} onChangesChoice={updateHandoverChangesChoice} onChangeText={updateHandoverChangeText} />,
     family: selectedPatient ? <FamilyScreen patient={selectedPatient} familyState={selectedFamilyState} alertSent={selectedFamilyAlerted} responded={selectedFamilyResponded} onAlert={() => alertPatientFamily(selectedPatient.id)} onFamily={(state) => updatePatientFamily(selectedPatient.id, state)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     escalation: selectedPatient ? <Escalation patient={selectedPatient} escalated={selectedEscalated} barrierComplete={selectedBarrierComplete} onEscalate={() => escalatePatient(selectedPatient.id)} onBarrier={() => completePatientBarrier(selectedPatient.id)} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     integration: <Integration />,
