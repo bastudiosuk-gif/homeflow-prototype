@@ -12,7 +12,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type View = "dashboard" | "board" | "risk" | "journey" | "pharmacy" | "community" | "family" | "escalation" | "integration" | "analytics" | "pilot";
 type AccessView = "landing" | "login" | "app";
-type DemoRole = "ward-nurse" | "discharge-coordinator" | "pharmacist" | "community-team";
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type TtoStage = "awaiting-prescription" | "submitted" | "received" | "clarification" | "preparing" | "ready" | "delivered";
@@ -28,14 +27,8 @@ type DemoState = { ttoComplete: boolean; familyState: FamilyState; familyAlerted
 const DEMO_STATE_KEY = "homeflow-demo-state-v3";
 const DEMO_CHANNEL = "homeflow-demo-sync-v3";
 const DEMO_SESSION_KEY = "homeflow-demo-session-v1";
-const DEMO_ROLE_KEY = "homeflow-demo-role-v1";
-
-const demoRoles: { id: DemoRole; label: string; description: string; startView: View }[] = [
-  { id: "ward-nurse", label: "Ward nurse", description: "Ward board, patient journeys and family readiness", startView: "board" },
-  { id: "discharge-coordinator", label: "Discharge coordinator", description: "Overview, barriers, escalation and coordination", startView: "dashboard" },
-  { id: "pharmacist", label: "Pharmacist", description: "Prioritised TTO queue and progress updates", startView: "pharmacy" },
-  { id: "community-team", label: "Community team", description: "Structured handovers and closed-loop responses", startView: "community" },
-];
+const OFFICIAL_EMAIL = "basintaleuk@gmail.com";
+const DEMO_PASSWORD_SHA256 = "51afc6a537a4f50e409c1d71419b5624e5ae9af1e4654f7d75ccd328da705b9b";
 
 const navItems: { id: View; label: string; short: string; icon: typeof Home }[] = [
   { id: "dashboard", label: "Executive overview", short: "Overview", icon: LayoutDashboard },
@@ -421,24 +414,19 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
           <span><LockKeyhole size={15} /> Simulated role access — no real credentials</span>
         </div>
       </div>
-      <div className="landing-preview" aria-label="Illustrative HomeFlow discharge overview">
-        <div className="preview-toolbar"><div><i /><i /><i /></div><span>Ward 3 · live coordination view</span><em>DEMO</em></div>
-        <div className="preview-heading"><div><small>EXPECTED DISCHARGES</small><strong>Today at a glance</strong></div><span><i /> Live demo state</span></div>
-        <div className="preview-metrics"><article><small>Expected today</small><strong>7</strong></article><article className="green"><small>Ready to leave</small><strong>3</strong></article><article className="amber"><small>Barriers open</small><strong>4</strong></article></div>
-        <div className="preview-patients">
-          <article><span className="preview-status amber" /><div><strong>Bed 12 · HF-3012</strong><small>TTO medication · Medical team</small></div><em>11:00</em></article>
-          <article><span className="preview-status green" /><div><strong>Bed 08 · HF-3008</strong><small>Ready to leave · Family confirmed</small></div><em>Complete</em></article>
-          <article><span className="preview-status red" /><div><strong>Bed 04 · HF-3004</strong><small>Home equipment · Community team</small></div><em>12:00</em></article>
-        </div>
-        <footer><ShieldCheck size={14} /> Fictional identifiers and demonstration data only</footer>
+      <div className="landing-brand-card" aria-label="HomeFlow coordinated discharge pathway">
+        <HomeFlowLogo />
+        <p>One coordinated pathway from clinical readiness to a safe, prepared discharge.</p>
+        <div className="landing-pathway"><span><Stethoscope size={19} /> Patient ready</span><ArrowRight size={17} /><span><ListChecks size={19} /> Actions owned</span><ArrowRight size={17} /><span><HeartHandshake size={19} /> Family prepared</span></div>
+        <div className="landing-lock"><LockKeyhole size={21} /><div><strong>Information is behind sign-in</strong><span>No ward, patient or operational information is shown on this public welcome page.</span></div></div>
+        <small><ShieldCheck size={14} /> Prototype access gate · Demonstration data only</small>
       </div>
     </section>
     <footer className="access-footer"><span>Independent innovation concept · Not an official NHS product</span><span>HomeFlow Dragons’ Den 2026</span></footer>
   </main>;
 }
 
-function LoginScreen({ role, code, error, onRoleChange, onCodeChange, onSubmit, onBack }: { role: DemoRole; code: string; error: string; onRoleChange: (role: DemoRole) => void; onCodeChange: (code: string) => void; onSubmit: () => void; onBack: () => void }) {
-  const selectedRole = demoRoles.find((item) => item.id === role) ?? demoRoles[0];
+function LoginScreen({ code, error, onCodeChange, onSubmit, onBack }: { code: string; error: string; onCodeChange: (code: string) => void; onSubmit: () => void; onBack: () => void }) {
   return <main className="access-shell login-screen">
     <section className="login-brand-panel">
       <HomeFlowLogo inverse />
@@ -451,11 +439,11 @@ function LoginScreen({ role, code, error, onRoleChange, onCodeChange, onSubmit, 
         <div className="login-icon"><LockKeyhole size={23} /></div>
         <p className="access-kicker">HOMEFLOW DEMO ACCESS</p>
         <h2>Welcome back</h2>
-        <p className="login-intro">This sign-in is for prototype demonstration only. Select the role you want to explore.</p>
-        <label className="access-field"><span>Demonstration role</span><div><select value={role} onChange={(event) => onRoleChange(event.target.value as DemoRole)}>{demoRoles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select><ChevronDown size={17} /></div><small>{selectedRole.description}</small></label>
-        <label className="access-field"><span>Demo access code</span><div><input type="password" value={code} onChange={(event) => onCodeChange(event.target.value)} autoComplete="off" aria-describedby="demo-code-help" /><LockKeyhole size={17} /></div><small id="demo-code-help">For this prototype, use <strong>HOMEFLOW</strong>. Never enter a real password.</small></label>
+        <p className="login-intro">Sign in with the single authorised demonstration account to view HomeFlow information.</p>
+        <label className="access-field"><span>Official email</span><div><input type="email" value={OFFICIAL_EMAIL} readOnly autoComplete="off" /><UserRoundCheck size={17} /></div><small>This prototype accepts this account only.</small></label>
+        <label className="access-field"><span>Password</span><div><input type="password" value={code} onChange={(event) => onCodeChange(event.target.value)} autoComplete="off" aria-describedby="demo-password-help" /><LockKeyhole size={17} /></div><small id="demo-password-help">Enter the password supplied by the HomeFlow owner.</small></label>
         {error && <p className="login-error" role="alert"><AlertTriangle size={16} /> {error}</p>}
-        <button className="access-primary login-submit" type="submit"><LogIn size={19} /> Enter {selectedRole.label} workspace <ArrowRight size={18} /></button>
+        <button className="access-primary login-submit" type="submit"><LogIn size={19} /> Sign in to HomeFlow <ArrowRight size={18} /></button>
         <p className="login-disclaimer"><Info size={15} /> A production version would require Trust-approved identity, role permissions and audit controls.</p>
       </form>
       <p className="login-footer">HomeFlow Prototype · Demonstration Data Only</p>
@@ -464,8 +452,7 @@ function LoginScreen({ role, code, error, onRoleChange, onCodeChange, onSubmit, 
 }
 
 export default function HomeFlow() {
-  const [accessView, setAccessView] = useState<AccessView>("landing");
-  const [demoRole, setDemoRole] = useState<DemoRole>("ward-nurse");
+  const [accessView, setAccessView] = useState<AccessView>(() => typeof window !== "undefined" && window.localStorage.getItem(DEMO_SESSION_KEY) === "active" ? "app" : "landing");
   const [demoAccessCode, setDemoAccessCode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [view, setView] = useState<View>("dashboard");
@@ -708,21 +695,21 @@ export default function HomeFlow() {
     markUpdated();
   }, [markUpdated]);
   const navigate = useCallback((next: View) => { setView(next); setMobileMenuOpen(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
-  const enterDemo = useCallback(() => {
-    if (demoAccessCode.trim().toUpperCase() !== "HOMEFLOW") {
-      setLoginError("That demo code is not recognised. Use HOMEFLOW to continue.");
+  const enterDemo = useCallback(async () => {
+    const passwordBytes = new TextEncoder().encode(demoAccessCode);
+    const passwordDigest = await window.crypto.subtle.digest("SHA-256", passwordBytes);
+    const passwordHash = Array.from(new Uint8Array(passwordDigest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    if (passwordHash !== DEMO_PASSWORD_SHA256) {
+      setLoginError("The email or password is incorrect.");
       return;
     }
-    const selectedRole = demoRoles.find((item) => item.id === demoRole) ?? demoRoles[0];
-    window.sessionStorage.setItem(DEMO_SESSION_KEY, "active");
-    window.sessionStorage.setItem(DEMO_ROLE_KEY, demoRole);
+    window.localStorage.setItem(DEMO_SESSION_KEY, "active");
     setLoginError("");
     setAccessView("app");
-    navigate(selectedRole.startView);
-  }, [demoAccessCode, demoRole, navigate]);
+    navigate("dashboard");
+  }, [demoAccessCode, navigate]);
   const signOutDemo = useCallback(() => {
-    window.sessionStorage.removeItem(DEMO_SESSION_KEY);
-    window.sessionStorage.removeItem(DEMO_ROLE_KEY);
+    window.localStorage.removeItem(DEMO_SESSION_KEY);
     setDemoAccessCode("");
     setLoginError("");
     setAccessView("landing");
@@ -832,14 +819,13 @@ export default function HomeFlow() {
     analytics: <Analytics />,
     pilot: <Pilot />,
   };
-  if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   if (accessView === "landing") return <LandingScreen onLogin={() => { setLoginError(""); setAccessView("login"); }} />;
-  if (accessView === "login") return <LoginScreen role={demoRole} code={demoAccessCode} error={loginError} onRoleChange={(role) => { setDemoRole(role); setLoginError(""); }} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={enterDemo} onBack={() => { setLoginError(""); setAccessView("landing"); }} />;
+  if (accessView === "login") return <LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} onBack={() => { setLoginError(""); setAccessView("landing"); }} />;
+  if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   const pharmacyWorkspace = view === "pharmacy";
-  const activeRole = demoRoles.find((item) => item.id === demoRole) ?? demoRoles[0];
   return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"} ${pharmacyWorkspace ? "pharmacy-mode" : "ward-mode"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>HomeFlow Prototype — Demonstration Data</strong><span>No real patient data, messaging or live system integration</span></div>
     {!pharmacyWorkspace && <aside className="sidebar"><div className="brand"><div className="brand-mark"><Home size={22} /><span><i /><i /><i /></span></div>{sidebarOpen && <div><strong>HomeFlow</strong><span>Discharge coordination</span></div>}</div><nav aria-label="Ward workspace navigation">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)} title={item.label}><Icon size={19} />{sidebarOpen && <span>{item.short}</span>}</button>; })}</nav><div className="sidebar-bottom"><button className="demo-reset" onClick={resetDemo}><RefreshCcw size={18} />{sidebarOpen && <span>Reset demo</span>}</button><div className="not-nhs"><ShieldCheck size={17} />{sidebarOpen && <span>Independent innovation concept<br />Not an official NHS product</span>}</div></div></aside>}
-    <header className="topbar">{!pharmacyWorkspace && <button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button>}<div className="workspace-switcher"><div className="workspace-mark"><Home size={19} /><span><i /><i /><i /></span></div><div className="workspace-copy"><small>HomeFlow workspace</small><div className="workspace-select-wrap">{pharmacyWorkspace ? <Pill size={15} /> : <ListChecks size={15} />}<select aria-label="Choose HomeFlow workspace" value={pharmacyWorkspace ? "pharmacy" : "ward"} onChange={(event) => navigate(event.target.value === "pharmacy" ? "pharmacy" : "board")}><option value="ward">Ward coordination</option><option value="pharmacy">Pharmacy operations</option></select><ChevronDown size={15} /></div></div></div><div className="topbar-context"><strong>Northview NHS Trust</strong><span>{pharmacyWorkspace ? "Pharmacy operational workspace" : "Fictional demonstration environment"}</span></div><div className="topbar-actions">{!pharmacyWorkspace && <button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button>}<div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div><div className="demo-account"><UserRoundCheck size={17} /><span><small>Signed in as</small><strong>{activeRole.label}</strong></span><button onClick={signOutDemo} aria-label="Sign out of the HomeFlow demo" title="Sign out"><LogOut size={17} /></button></div></div></header>
+    <header className="topbar">{!pharmacyWorkspace && <button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button>}<div className="workspace-switcher"><div className="workspace-mark"><Home size={19} /><span><i /><i /><i /></span></div><div className="workspace-copy"><small>HomeFlow workspace</small><div className="workspace-select-wrap">{pharmacyWorkspace ? <Pill size={15} /> : <ListChecks size={15} />}<select aria-label="Choose HomeFlow workspace" value={pharmacyWorkspace ? "pharmacy" : "ward"} onChange={(event) => navigate(event.target.value === "pharmacy" ? "pharmacy" : "board")}><option value="ward">Ward coordination</option><option value="pharmacy">Pharmacy operations</option></select><ChevronDown size={15} /></div></div></div><div className="topbar-context"><strong>Northview NHS Trust</strong><span>{pharmacyWorkspace ? "Pharmacy operational workspace" : "Fictional demonstration environment"}</span></div><div className="topbar-actions">{!pharmacyWorkspace && <button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button>}<div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div><div className="demo-account"><UserRoundCheck size={17} /><span><small>Official account</small><strong>{OFFICIAL_EMAIL}</strong></span><button onClick={signOutDemo} aria-label="Sign out of the HomeFlow demo" title="Sign out"><LogOut size={17} /></button></div></div></header>
     <main className="main-content"><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>
     {!pharmacyWorkspace && <div className="mobile-nav">{wardNavItems.filter((item) => ["dashboard", "board", "community", "family"].includes(item.id)).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}<button className={mobileMenuOpen || !["dashboard", "board", "community", "family"].includes(view) ? "active" : ""} onClick={() => setMobileMenuOpen(true)} aria-haspopup="dialog" aria-expanded={mobileMenuOpen}><Menu size={18} /><span>More</span></button></div>}
     {mobileMenuOpen && !pharmacyWorkspace ? <div className="mobile-menu-backdrop" role="presentation" onClick={() => setMobileMenuOpen(false)}><section className="mobile-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" onClick={(event) => event.stopPropagation()}><header><div><span>HomeFlow</span><h2 id="mobile-menu-title">All ward tools</h2></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Close all ward tools"><X size={21} /></button></header><nav aria-label="All mobile ward tools">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><span className="mobile-menu-icon"><Icon size={20} /></span><span><strong>{item.short}</strong><small>{item.label}</small></span>{view === item.id ? <CheckCircle2 size={18} /> : <ChevronRight size={18} />}</button>; })}</nav><p><ShieldCheck size={15} /> Ward tools only · demonstration data</p></section></div> : null}
