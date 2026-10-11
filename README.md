@@ -4,7 +4,7 @@ HomeFlow is a polished, clickable discharge coordination, pharmacy visibility an
 
 ## What is simulated
 
-The prototype includes an executive dashboard, ward board, patient journey, staged family messages, overdue barrier escalation, a role-specific pharmacy TTO queue, a structured community handover view, a proposed integration map, QI analytics and the pilot ask. Changes are synchronised between these views in the browser for demonstration. All names, activity, metrics and messages are fictional. There is no backend, authentication, live messaging, API access or real patient data.
+The prototype includes an executive dashboard, ward board, patient journey, staged family messages, overdue barrier escalation, a separate role-specific pharmacy TTO workspace, a structured community handover view, a proposed integration map, QI analytics and the pilot ask. Ward users see the current pharmacy stage without the operational pharmacy controls; the HomeFlow title-bar selector switches between Ward Coordination and Pharmacy Operations. Changes are synchronised between these views in the browser for demonstration. All names, activity, metrics and messages are fictional. There is no backend, authentication, live messaging, API access or real patient data.
 
 ## What would require formal approval
 
