@@ -4,7 +4,7 @@ import {
   Activity, AlertTriangle, ArrowRight, BarChart3, BedDouble, BellRing, Check,
   CheckCircle2, ChevronDown, ChevronRight, CircleGauge, Clock3,
   ClipboardCheck, DoorOpen, FileCheck2, HeartHandshake, Home, Info, LayoutDashboard, Link2, ListChecks,
-  Maximize2, MessageSquareText, Minimize2, MonitorUp, PanelLeftClose, PanelLeftOpen, PhoneCall, Pill, Play, Presentation,
+  Maximize2, Menu, MessageSquareText, Minimize2, MonitorUp, PanelLeftClose, PanelLeftOpen, PhoneCall, Pill, Play, Presentation,
   RefreshCcw, Route, ShieldCheck, Sparkles, Stethoscope, Target, TrendingDown,
   UserRoundCheck, Users, X,
 } from "lucide-react";
@@ -181,18 +181,19 @@ function RiskPatients({ patients, onJourney, onEscalation, onOverview }: { patie
   </div>;
 }
 
-function WardBoard({ patients, onOpen }: { patients: Patient[]; onOpen: (patientId: string) => void }) {
+function WardBoard({ patients, ttoRecords, onOpen }: { patients: Patient[]; ttoRecords: Record<string, TtoRecord>; onOpen: (patientId: string) => void }) {
   const todayCount = patients.filter((patient) => patient.expected.startsWith("Today")).length;
   const greenCount = patients.filter((patient) => patient.rag === "Green").length;
   const amberCount = patients.filter((patient) => patient.rag === "Amber").length;
   const redCount = patients.filter((patient) => patient.rag === "Red").length;
   return <div className="screen-stack"><div className="board-toolbar"><div className="filter-group"><button className="filter active">All patients <span>{patients.length}</span></button><button className="filter">Today <span>{todayCount}</span></button><button className="filter">At risk <span>{redCount}</span></button></div><div className="board-summary"><span><i className="dot dot-green" /> {greenCount} Green</span><span><i className="dot dot-amber" /> {amberCount} Amber</span><span><i className="dot dot-red" /> {redCount} Red</span></div></div>
     <section className="panel table-panel"><div className="table-scroll"><table><thead><tr><th>Patient / location</th><th>Expected discharge</th><th>Status</th><th>Main barrier</th><th>Owner / target</th><th>Family readiness</th><th>Latest update</th><th><span className="sr-only">Action</span></th></tr></thead><tbody>{patients.map((p) => <tr key={p.id} className={p.id === "margaret" ? "focus-row" : ""}><td><div className="patient-name">{p.name}</div><div className="muted">{p.ward} / {p.bed}</div></td><td><strong>{p.expected.split(" · ")[0]}</strong><div className="muted">{p.expected.split(" · ")[1]}</div></td><td><StatusPill status={p.rag} /></td><td><strong>{p.barrier}</strong></td><td><strong>{p.owner}</strong><div className="muted">Target {p.deadline}</div></td><td><div className="family-state"><UserRoundCheck size={16} /> {p.family}</div></td><td><span className="muted">{p.update}</span></td><td><button className="icon-button" aria-label={`Open ${p.name}`} onClick={() => onOpen(p.id)}><ChevronRight size={18} /></button></td></tr>)}</tbody></table></div><div className="table-foot"><Info size={16} /> Select any fictional patient to view and update their discharge journey. Changes sync to the ward display.</div></section>
-    <section className="mobile-patient-list" aria-label="Phone-friendly ward discharge board">{patients.map((patient, index) => <article className={`mobile-patient-card rag-${patient.rag.toLowerCase()}`} key={patient.id}>
+    <section className="mobile-patient-list" aria-label="Phone-friendly ward discharge board">{patients.map((patient, index) => { const tto = ttoRecords[patient.id]; return <article className={`mobile-patient-card rag-${patient.rag.toLowerCase()}`} key={patient.id}>
       <header><div><span className="mobile-demo-id">DEMO-{String(index + 101)}</span><h2>{patient.name}</h2><p>{patient.ward} · {patient.bed.replace("Bed ", "Bed D-")}</p></div><StatusPill status={patient.rag} /></header>
       <div className="mobile-patient-grid"><div><span>Expected discharge</span><strong>{patient.expected}</strong></div><div><span>Main barrier</span><strong>{patient.barrier}</strong></div><div><span>Owner / target</span><strong>{patient.owner} · {patient.deadline}</strong></div><div><span>Family readiness</span><strong>{patient.family}</strong></div></div>
+      <button className={`mobile-pharmacy-status ${tto ? `stage-${ttoStageCopy[tto.stage].tone.toLowerCase()}` : "stage-none"}`} onClick={() => onOpen(patient.id)} aria-label={`${patient.name} pharmacy status: ${tto ? ttoStageCopy[tto.stage].label : "No active TTO"}. Open patient journey`}><span className="mobile-pharmacy-icon"><Pill size={18} /></span><span><small>Pharmacy status</small><strong>{tto ? ttoStageCopy[tto.stage].label : "No active TTO"}</strong>{tto ? <em>Owner: {ttoStageCopy[tto.stage].owner} · Target {tto.target}</em> : <em>No pharmacy action currently recorded</em>}</span><ChevronRight size={19} /></button>
       <div className="mobile-patient-footer"><span>{patient.update}</span><button onClick={() => onOpen(patient.id)} aria-label={`Open fictional patient ${patient.name}`}>View journey <ChevronRight size={18} /></button></div>
-    </article>)}<div className="mobile-privacy-note"><Info size={16} /> Fictional names, demo IDs and bed numbers only.</div></section>
+    </article>; })}<div className="mobile-privacy-note"><Info size={16} /> Fictional names, demo IDs and bed numbers only.</div></section>
   </div>;
 }
 
@@ -391,6 +392,7 @@ function defaultFamilyState(patient: Patient): FamilyState {
 export default function HomeFlow() {
   const [view, setView] = useState<View>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(true);
   const [ttoComplete, setTtoComplete] = useState(false);
   const [familyState, setFamilyState] = useState<FamilyState>("awaiting");
@@ -627,7 +629,7 @@ export default function HomeFlow() {
     }));
     markUpdated();
   }, [markUpdated]);
-  const navigate = useCallback((next: View) => { setView(next); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+  const navigate = useCallback((next: View) => { setView(next); setMobileMenuOpen(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${next}`); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
   const recordPatientLeft = useCallback((patientId: string) => {
     const patient = basePatients.find((item) => item.id === patientId);
     if (!patient) return;
@@ -654,6 +656,12 @@ export default function HomeFlow() {
     window.addEventListener("hashchange", updateDisplayMode);
     return () => window.removeEventListener("hashchange", updateDisplayMode);
   }, []);
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setMobileMenuOpen(false); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileMenuOpen]);
   useEffect(() => {
     const applyState = (next: DemoState) => {
       if (typeof next?.ttoComplete !== "boolean" || typeof next?.escalated !== "boolean" || !["awaiting", "confirmed", "support", "contact"].includes(next.familyState)) return;
@@ -713,7 +721,7 @@ export default function HomeFlow() {
     return () => controller.abort();
   }, [completeTto, confirmFamily, navigate, resetDemo]);
   const content: Record<View, React.ReactNode> = {
-    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} openTtos={openTtoCount} pendingHandovers={pendingHandoverCount} onNavigate={navigate} />, board: <WardBoard patients={patients} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} openTtos={openTtoCount} pendingHandovers={pendingHandoverCount} onNavigate={navigate} />, board: <WardBoard patients={patients} ttoRecords={ttoRecords} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
     risk: <RiskPatients patients={riskPatients} onOverview={() => navigate("dashboard")} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onEscalation={(patientId) => { setSelectedPatientId(patientId); navigate("escalation"); }} />,
     journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} tto={ttoRecords[selectedPatient.id]} handover={handoverRecords[selectedPatient.id]} activity={activityLog[selectedPatient.id] ?? []} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} onCommunity={() => navigate("community")} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     pharmacy: <PharmacyQueue patients={patients} records={ttoRecords} onAdvance={advanceTto} onClarification={requestTtoClarification} />,
@@ -730,7 +738,8 @@ export default function HomeFlow() {
     {!pharmacyWorkspace && <aside className="sidebar"><div className="brand"><div className="brand-mark"><Home size={22} /><span><i /><i /><i /></span></div>{sidebarOpen && <div><strong>HomeFlow</strong><span>Discharge coordination</span></div>}</div><nav aria-label="Ward workspace navigation">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)} title={item.label}><Icon size={19} />{sidebarOpen && <span>{item.short}</span>}</button>; })}</nav><div className="sidebar-bottom"><button className="demo-reset" onClick={resetDemo}><RefreshCcw size={18} />{sidebarOpen && <span>Reset demo</span>}</button><div className="not-nhs"><ShieldCheck size={17} />{sidebarOpen && <span>Independent innovation concept<br />Not an official NHS product</span>}</div></div></aside>}
     <header className="topbar">{!pharmacyWorkspace && <button className="sidebar-toggle" onClick={() => setSidebarOpen((o) => !o)} aria-label={sidebarOpen ? "Collapse navigation" : "Open navigation"}>{sidebarOpen ? <PanelLeftClose size={21} /> : <PanelLeftOpen size={21} />}</button>}<div className="workspace-switcher"><div className="workspace-mark"><Home size={19} /><span><i /><i /><i /></span></div><div className="workspace-copy"><small>HomeFlow workspace</small><div className="workspace-select-wrap">{pharmacyWorkspace ? <Pill size={15} /> : <ListChecks size={15} />}<select aria-label="Choose HomeFlow workspace" value={pharmacyWorkspace ? "pharmacy" : "ward"} onChange={(event) => navigate(event.target.value === "pharmacy" ? "pharmacy" : "board")}><option value="ward">Ward coordination</option><option value="pharmacy">Pharmacy operations</option></select><ChevronDown size={15} /></div></div></div><div className="topbar-context"><strong>Northview NHS Trust</strong><span>{pharmacyWorkspace ? "Pharmacy operational workspace" : "Fictional demonstration environment"}</span></div><div className="topbar-actions">{!pharmacyWorkspace && <button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button>}<div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div></div></header>
     <main className="main-content"><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>
-    {!pharmacyWorkspace && <div className="mobile-nav">{wardNavItems.filter((item) => ["dashboard", "board", "community", "family"].includes(item.id)).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}</div>}
+    {!pharmacyWorkspace && <div className="mobile-nav">{wardNavItems.filter((item) => ["dashboard", "board", "community", "family"].includes(item.id)).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}<button className={mobileMenuOpen || !["dashboard", "board", "community", "family"].includes(view) ? "active" : ""} onClick={() => setMobileMenuOpen(true)} aria-haspopup="dialog" aria-expanded={mobileMenuOpen}><Menu size={18} /><span>More</span></button></div>}
+    {mobileMenuOpen && !pharmacyWorkspace ? <div className="mobile-menu-backdrop" role="presentation" onClick={() => setMobileMenuOpen(false)}><section className="mobile-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" onClick={(event) => event.stopPropagation()}><header><div><span>HomeFlow</span><h2 id="mobile-menu-title">All ward tools</h2></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Close all ward tools"><X size={21} /></button></header><nav aria-label="All mobile ward tools">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><span className="mobile-menu-icon"><Icon size={20} /></span><span><strong>{item.short}</strong><small>{item.label}</small></span>{view === item.id ? <CheckCircle2 size={18} /> : <ChevronRight size={18} />}</button>; })}</nav><button className="mobile-pharmacy-switch" onClick={() => navigate("pharmacy")}><Pill size={19} /><span><strong>Pharmacy operations</strong><small>Open the separate pharmacy workspace</small></span><ArrowRight size={18} /></button><p><ShieldCheck size={15} /> Prototype navigation · demonstration data only</p></section></div> : null}
     {toast && <div className="toast" role="status"><CheckCircle2 size={19} /><span>{toast}</span><button onClick={() => setToast(null)} aria-label="Dismiss"><X size={16} /></button></div>}
   </div>;
 }
