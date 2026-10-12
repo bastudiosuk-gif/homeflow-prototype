@@ -360,6 +360,67 @@ body{
   .kpi-label{max-width:115px}
 }
 
+/* Premium ward board */
+.ward-board-stack{gap:18px}
+.view-board .page-header{border-color:#c8dfe8;background:radial-gradient(circle at 92% 5%,rgba(66,208,184,.14),transparent 17rem),linear-gradient(145deg,#fff,#f5fafc);box-shadow:0 15px 38px rgba(8,58,82,.075)}
+.board-toolbar{position:relative;overflow:hidden;padding:20px 22px;color:#fff;background:radial-gradient(circle at 94% -20%,rgba(84,218,195,.24),transparent 15rem),linear-gradient(135deg,#072b43,#0c5368);border:1px solid rgba(255,255,255,.1);border-radius:17px;box-shadow:0 16px 36px rgba(5,42,62,.17)}
+.board-toolbar:after{content:"";position:absolute;right:-42px;bottom:-82px;width:180px;height:180px;border:24px solid rgba(255,255,255,.035);border-radius:50%;pointer-events:none}
+.board-toolbar-copy{position:relative;z-index:1;min-width:230px}
+.board-toolbar-copy span{display:flex;align-items:center;gap:8px;color:#7ce0cd;font-size:8px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
+.board-toolbar-copy span i{width:7px;height:7px;background:#68dec8;border-radius:50%;box-shadow:0 0 0 5px rgba(104,222,200,.12),0 0 16px rgba(104,222,200,.7)}
+.board-toolbar-copy strong,.board-toolbar-copy small{display:block}
+.board-toolbar-copy strong{margin-top:7px;font-size:19px;letter-spacing:-.025em}
+.board-toolbar-copy small{margin-top:4px;color:rgba(224,241,245,.67);font-size:9px}
+.board-toolbar-controls{position:relative;z-index:1;display:flex;align-items:flex-end;flex-direction:column;gap:10px}
+.board-toolbar .filter-group{padding:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(8px)}
+.board-toolbar .filter{color:rgba(231,244,247,.72)}
+.board-toolbar .filter span{margin-left:4px;padding:2px 6px;color:#dff7f2;background:rgba(255,255,255,.1);border-radius:999px;font-size:8px}
+.board-toolbar .filter.active{color:#075d7c;background:#fff;box-shadow:0 6px 16px rgba(0,20,31,.18)}
+.board-toolbar .filter.active span{color:#0876a8;background:#e8f4f8}
+.board-toolbar .board-summary{gap:7px}
+.board-toolbar .board-summary span{display:flex;align-items:center;gap:5px;padding:5px 8px;color:rgba(231,244,247,.72);background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.08);border-radius:999px;font-size:8px}
+.board-toolbar .board-summary strong{color:#fff;font-size:10px}
+.premium-board-table{border-color:#c4dce6;box-shadow:0 18px 46px rgba(9,55,77,.095)}
+.premium-board-table table{min-width:1180px}
+.premium-board-table th{height:47px;padding-inline:17px;color:#6b8190;background:linear-gradient(180deg,#f8fbfc,#f1f7f9);border-bottom-color:#cbdde5;font-size:8px}
+.premium-board-table td{height:78px;padding:14px 17px}
+.premium-board-table tbody tr{--row-rag:var(--blue);position:relative;transition:background .16s,transform .16s}
+.premium-board-table tbody tr.rag-green{--row-rag:var(--green)}
+.premium-board-table tbody tr.rag-amber{--row-rag:var(--amber)}
+.premium-board-table tbody tr.rag-red{--row-rag:var(--red)}
+.premium-board-table tbody tr td:first-child{box-shadow:inset 4px 0 var(--row-rag)}
+.premium-board-table tbody tr:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--row-rag),transparent 94%),#fbfdfe)}
+.premium-board-table .focus-row{background:linear-gradient(90deg,rgba(0,94,184,.055),#fbfdff);box-shadow:none}
+.patient-cell,.mobile-patient-identity{display:flex;align-items:center;gap:11px}
+.patient-avatar{width:36px;height:36px;display:grid;place-items:center;flex:0 0 36px;color:#fff;background:linear-gradient(145deg,var(--row-rag,var(--blue)),color-mix(in srgb,var(--row-rag,var(--blue)),#0d3d59 28%));border-radius:11px 11px 11px 4px;box-shadow:0 7px 16px color-mix(in srgb,var(--row-rag,var(--blue)),transparent 78%);font-size:13px;font-weight:900}
+.premium-board-table .patient-name{margin-bottom:3px;font-size:14px;letter-spacing:-.01em}
+.discharge-day{color:var(--navy);font-size:11px}
+.latest-update{max-width:150px;display:flex;align-items:flex-start;gap:7px;color:var(--muted);font-size:9px;line-height:1.45}
+.latest-update i{width:6px;height:6px;flex:0 0 6px;margin-top:4px;background:var(--row-rag);border-radius:50%;box-shadow:0 0 0 3px color-mix(in srgb,var(--row-rag),transparent 87%)}
+.row-open-button{display:flex;align-items:center;gap:4px;padding:8px 9px;color:#0774a8;background:#edf7fa;border:1px solid #c9e2eb;border-radius:8px;font-size:9px;font-weight:850;cursor:pointer;transition:transform .15s,background .15s}
+.row-open-button:hover{color:#fff;background:#087bbf;border-color:#087bbf;transform:translateX(2px)}
+.premium-board-table .table-foot{padding:13px 17px;background:linear-gradient(180deg,#f9fbfc,#f3f8fa)}
+.premium-board-table .table-foot span{margin-right:auto}
+.premium-board-table .table-foot strong{display:flex;align-items:center;gap:6px;color:#08795f;font-size:9px}
+.mobile-patient-identity{align-items:flex-start}
+.mobile-patient-card{position:relative;--row-rag:var(--card-rag)}
+.mobile-patient-card>header{border-bottom-color:#dfeaf0}
+.mobile-patient-card .patient-avatar{margin-top:1px}
+.mobile-patient-grid{background:linear-gradient(180deg,#fff,#fbfdfe)}
+.mobile-patient-grid>div:nth-child(2) strong{color:color-mix(in srgb,var(--card-rag),#18394c 45%)}
+
+@media(max-width:720px){
+  .view-board .page-header{background:radial-gradient(circle at 100% 0,rgba(65,213,188,.25),transparent 13rem),linear-gradient(145deg,#0a3852,#0a6175);border-color:rgba(255,255,255,.1)}
+  .board-toolbar{align-items:stretch;padding:17px 16px}
+  .board-toolbar-copy strong{font-size:17px}
+  .board-toolbar-controls{width:100%;align-items:stretch}
+  .board-toolbar .filter-group{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}
+  .board-toolbar .filter{padding-inline:6px;text-align:center}
+  .mobile-patient-card{box-shadow:0 14px 34px rgba(9,54,76,.1)}
+  .mobile-patient-card>header{padding:17px 16px}
+  .mobile-patient-grid{padding-inline:17px}
+}
+
 /* Closed-loop ward escalation visible in the pharmacy queue */
 .pharmacy-card.has-ward-escalation{border-left-color:var(--red);box-shadow:0 14px 35px rgba(173,42,54,.12)}
 .pharmacy-escalation{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:11px;margin:15px 19px 0;padding:12px 13px;color:#8d2632;background:linear-gradient(135deg,#fff2f3,#fff9f7);border:1px solid #efbcc1;border-radius:9px;box-shadow:0 7px 18px rgba(168,48,60,.08)}
