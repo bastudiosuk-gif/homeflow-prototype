@@ -11,7 +11,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type View = "dashboard" | "board" | "risk" | "journey" | "pharmacy" | "community" | "family" | "escalation" | "integration" | "analytics" | "pilot";
-type AccessView = "login" | "app";
+type AccessView = "login" | "welcome" | "app";
 type Rag = "Green" | "Amber" | "Red";
 type FamilyState = "awaiting" | "confirmed" | "support" | "contact";
 type TtoStage = "awaiting-prescription" | "submitted" | "received" | "clarification" | "preparing" | "ready" | "delivered";
@@ -424,6 +424,50 @@ function LoginScreen({ code, error, onCodeChange, onSubmit }: { code: string; er
   </main>;
 }
 
+function WelcomeScreen() {
+  return <main className="welcome-screen" aria-live="polite" aria-label="Welcome to HomeFlow">
+    <div className="welcome-atmosphere" aria-hidden="true"><i /><i /><i /><i /></div>
+    <section className="welcome-content">
+      <div className="welcome-logo"><HomeFlowLogo /></div>
+      <p>Welcome to HomeFlow</p>
+      <div className="welcome-progress" aria-hidden="true"><span /></div>
+    </section>
+  </main>;
+}
+
+async function playWelcomeSound() {
+  try {
+    const audioContext = new AudioContext();
+    if (audioContext.state === "suspended") await audioContext.resume();
+    const master = audioContext.createGain();
+    master.gain.setValueAtTime(0.0001, audioContext.currentTime);
+    master.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.08);
+    master.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 2.35);
+    master.connect(audioContext.destination);
+    [
+      { frequency: 523.25, start: 0, duration: 1.25 },
+      { frequency: 659.25, start: 0.18, duration: 1.35 },
+      { frequency: 783.99, start: 0.43, duration: 1.45 },
+      { frequency: 1046.5, start: 0.78, duration: 1.45 },
+    ].forEach(({ frequency, start, duration }) => {
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + start);
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.11, audioContext.currentTime + start + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + start + duration);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(audioContext.currentTime + start);
+      oscillator.stop(audioContext.currentTime + start + duration + 0.05);
+    });
+    window.setTimeout(() => { void audioContext.close(); }, 2700);
+  } catch {
+    // Browsers may block audio despite a user-initiated sign-in; the visual welcome still continues.
+  }
+}
+
 export default function HomeFlow() {
   const [accessView, setAccessView] = useState<AccessView>(() => typeof window !== "undefined" && window.localStorage.getItem(DEMO_SESSION_KEY) === "active" ? "app" : "login");
   const [demoAccessCode, setDemoAccessCode] = useState("");
@@ -678,7 +722,8 @@ export default function HomeFlow() {
     }
     window.localStorage.setItem(DEMO_SESSION_KEY, "active");
     setLoginError("");
-    setAccessView("app");
+    setAccessView("welcome");
+    void playWelcomeSound();
     navigate("dashboard");
   }, [demoAccessCode, navigate]);
   const signOutDemo = useCallback(() => {
@@ -706,6 +751,11 @@ export default function HomeFlow() {
   const resetDemo = useCallback(() => { setTtoComplete(false); setFamilyState("awaiting"); setFamilyAlerted(false); setFamilyResponded(false); setEscalated(false); setPatientUpdates({}); setTtoRecords(initialTtoRecords); setHandoverRecords(initialHandoverRecords); setActivityLog(initialActivityLog); setSelectedPatientId("margaret"); markUpdated(); setView("dashboard"); setWardDisplay(false); window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); showToast("Demo reset to the starting position."); }, [markUpdated, showToast]);
   const openWardDisplay = useCallback(() => { window.open(`${window.location.pathname}${window.location.search}#ward-display`, "homeflow-ward-display", "noopener,noreferrer"); }, []);
   const exitWardDisplay = useCallback(() => { window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#dashboard`); setView("dashboard"); setWardDisplay(false); }, []);
+  useEffect(() => {
+    if (accessView !== "welcome") return;
+    const welcomeTimer = window.setTimeout(() => setAccessView("app"), 5000);
+    return () => window.clearTimeout(welcomeTimer);
+  }, [accessView]);
   useEffect(() => {
     const updateDisplayMode = () => {
       const hash = window.location.hash.slice(1);
@@ -793,6 +843,7 @@ export default function HomeFlow() {
     pilot: <Pilot />,
   };
   if (accessView === "login") return <LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} />;
+  if (accessView === "welcome") return <WelcomeScreen />;
   if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   const pharmacyWorkspace = view === "pharmacy";
   return <div className={`app-shell ${sidebarOpen ? "sidebar-visible" : "sidebar-collapsed"} ${pharmacyWorkspace ? "pharmacy-mode" : "ward-mode"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>HomeFlow Prototype — Demonstration Data</strong><span>No real patient data, messaging or live system integration</span></div>
