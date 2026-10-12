@@ -461,3 +461,27 @@ body{
   .workspace-copy>small{font-size:6px}
   .workspace-select-wrap select{width:155px;font-size:10px}
 }
+
+/* Keep the desktop header focused on navigation and essential actions */
+@media(min-width:721px){
+  .topbar,.sidebar-collapsed .topbar{
+    height:68px;
+    padding-inline:24px;
+  }
+  .ward-mode .topbar-logo,
+  .topbar-context,
+  .topbar .demo-switch,
+  .topbar .updated,
+  .topbar .demo-account>svg,
+  .topbar .demo-account>span{display:none}
+  .workspace-switcher{
+    min-width:220px;
+    margin-left:0;
+    padding:6px 11px;
+  }
+  .pharmacy-mode .workspace-switcher{margin-left:22px}
+  .topbar-actions{margin-left:auto;gap:10px}
+  .demo-account{padding-left:0;border-left:0}
+  .demo-account button{width:38px;height:38px}
+  .main-content,.sidebar-collapsed .main-content{padding-top:138px}
+}
