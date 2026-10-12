@@ -198,7 +198,24 @@ function KpiCard({ label, value, note, icon: Icon, tone = "blue", onOpen, destin
   return <article className={`kpi-card kpi-tone-${tone}`}>{content}</article>;
 }
 
-function Dashboard({ ready, atRiskCount, openTtos, pendingHandovers, onNavigate }: { ready: boolean; atRiskCount: number; openTtos: number; pendingHandovers: number; onNavigate: (view: View) => void }) {
+function ExceptionQueue({ patients, onOpen, onViewAll }: { patients: Patient[]; onOpen: (patientId: string) => void; onViewAll: () => void }) {
+  const exceptions = patients
+    .filter((patient) => patient.rag === "Red" || (patient.rag === "Amber" && patient.expected.startsWith("Today")) || /support required|contact requested/i.test(patient.family))
+    .sort((a, b) => Number(b.rag === "Red") - Number(a.rag === "Red"));
+  return <section className="exception-panel" aria-labelledby="exception-title">
+    <header className="exception-heading"><div><p className="section-kicker">Exception view · no routine updates</p><h2 id="exception-title">Needs attention now</h2><span>Only patients with a current risk, response or time-sensitive action appear here.</span></div><div className="exception-heading-actions"><strong>{exceptions.length}</strong><span>active exceptions</span><button onClick={onViewAll}>View priority list <ArrowRight size={15} /></button></div></header>
+    {exceptions.length ? <div className="exception-list">{exceptions.slice(0, 4).map((patient) => {
+      const reason = patient.rag === "Red" ? "High priority" : /support required|contact requested/i.test(patient.family) ? "Family response" : "Due today";
+      const action = /TTO|medication/i.test(patient.barrier) ? "Pharmacy action needed" : `${patient.owner} action needed`;
+      return <button type="button" className={`exception-item exception-${patient.rag.toLowerCase()}`} onClick={() => onOpen(patient.id)} key={patient.id} aria-label={`Open unlock plan for ${patient.name}: ${patient.barrier}`}>
+        <span className="exception-rag"><i />{reason}</span><span className="exception-patient"><span className="exception-avatar">{patient.name.charAt(0)}</span><span><strong>{patient.name}</strong><small>{patient.bed} · {patient.expected}</small></span></span><span className="exception-issue"><small>What needs attention</small><strong>{patient.barrier}</strong><em>{action}</em></span><span className="exception-owner"><small>Owner · target</small><strong>{patient.owner}</strong><em>{patient.deadline}</em></span><span className="exception-open">Unlock plan <ChevronRight size={17} /></span>
+      </button>;
+    })}</div> : <div className="exception-clear"><CheckCircle2 size={26} /><div><strong>No exceptions need attention</strong><span>Routine patients remain available on the ward board.</span></div></div>}
+    <footer><ShieldCheck size={15} /> Fictional demonstration data only · Green patients stay out of this queue.</footer>
+  </section>;
+}
+
+function Dashboard({ ready, atRiskCount, openTtos, pendingHandovers, patients, onNavigate, onOpenPatient }: { ready: boolean; atRiskCount: number; openTtos: number; pendingHandovers: number; patients: Patient[]; onNavigate: (view: View) => void; onOpenPatient: (patientId: string) => void }) {
   return <div className="screen-stack dashboard-stack">
     <section className="kpi-grid" aria-label="Discharge metrics">
       <KpiCard label="Expected today" value={18} note="Across 3 demo wards" icon={Users} destination="ward board" onOpen={() => onNavigate("board")} />
@@ -208,6 +225,7 @@ function Dashboard({ ready, atRiskCount, openTtos, pendingHandovers, onNavigate 
       <KpiCard label="TTOs in progress" value={openTtos} note="Stages visible on the ward board" icon={Pill} tone="purple" destination="ward board" onOpen={() => onNavigate("board")} />
       <KpiCard label="Community handovers" value={pendingHandovers} note="Awaiting closed-loop confirmation" icon={HeartHandshake} tone="green" destination="community handover" onOpen={() => onNavigate("community")} />
     </section>
+    <ExceptionQueue patients={patients} onOpen={onOpenPatient} onViewAll={() => onNavigate("risk")} />
     <section className="content-grid">
       <article className="panel bottleneck-panel"><div className="panel-heading"><div><p className="section-kicker">Operational view</p><h2>Today’s discharge bottlenecks</h2></div><span className="mini-badge">23 open actions</span></div><div className="bottleneck-list">{bottlenecks.map((item) => <div className="bar-row" key={item.label}><div className="bar-meta"><span>{item.label}</span><strong>{item.count}</strong></div><div className="bar-track"><span style={{ width: `${Math.max(item.share * 2.55, 10)}%`, background: item.color }} /></div></div>)}</div></article>
       <div className="side-stack"><article className="panel readiness-panel"><div className="panel-heading compact"><div><p className="section-kicker">Family readiness</p><h2>{ready ? 79 : 71}% confirmed</h2></div><div className="readiness-ring" style={{ "--progress": `${ready ? 79 : 71}%` } as React.CSSProperties}><Users size={22} /></div></div><div className="readiness-bars"><span style={{ width: `${ready ? 79 : 71}%` }} /></div><div className="legend-row"><span><i className="dot dot-green" /> Confirmed {ready ? 11 : 10}</span><span><i className="dot dot-amber" /> Waiting 3</span><span><i className="dot dot-red" /> Support 1</span></div></article><article className="insight-card"><div className="insight-icon"><Sparkles size={20} /></div><div><p className="section-kicker">Flow insight</p><h3>Medication is today’s biggest opportunity</h3><p>Seven patients are waiting on TTO-related steps. Earlier visibility could protect up to 8.5 discharge hours.</p></div></article></div>
@@ -889,7 +907,7 @@ export default function HomeFlow() {
     return () => controller.abort();
   }, [completeTto, confirmFamily, navigate, resetDemo]);
   const content: Record<View, React.ReactNode> = {
-    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} openTtos={openTtoCount} pendingHandovers={pendingHandoverCount} onNavigate={navigate} />, board: <WardBoard patients={patients} ttoRecords={ttoRecords} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
+    dashboard: <Dashboard ready={ready} atRiskCount={riskPatients.length} openTtos={openTtoCount} pendingHandovers={pendingHandoverCount} patients={patients} onNavigate={navigate} onOpenPatient={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />, board: <WardBoard patients={patients} ttoRecords={ttoRecords} onOpen={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} />,
     risk: <RiskPatients patients={riskPatients} onOverview={() => navigate("dashboard")} onJourney={(patientId) => { setSelectedPatientId(patientId); navigate("journey"); }} onEscalation={(patientId) => { setSelectedPatientId(patientId); navigate("escalation"); }} />,
     journey: selectedPatient ? <Journey patient={selectedPatient} barrierComplete={selectedBarrierComplete} familyState={selectedFamilyState} tto={ttoRecords[selectedPatient.id]} handover={handoverRecords[selectedPatient.id]} activity={activityLog[selectedPatient.id] ?? []} onBarrier={() => completePatientBarrier(selectedPatient.id)} onFamily={() => updatePatientFamily(selectedPatient.id, "confirmed")} onPatientLeft={() => recordPatientLeft(selectedPatient.id)} onCommunity={() => navigate("community")} onPharmacy={() => navigate("pharmacy")} onEscalation={() => navigate("escalation")} /> : <EmptyJourney onBoard={() => navigate("board")} />,
     pharmacy: <PharmacyQueue patients={patients} records={ttoRecords} activity={activityLog} onAdvance={advanceTto} onClarification={requestTtoClarification} onAcknowledge={acknowledgeEscalation} />,
