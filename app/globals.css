@@ -502,6 +502,11 @@ body{
 @media(max-width:520px){.welcome-orbit{top:58px;width:350px;height:220px}.welcome-network{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.welcome-screen,.welcome-content,.welcome-logo,.welcome-shine,.welcome-content>p span,.welcome-content>p strong,.welcome-atmosphere i,.welcome-network path,.welcome-network circle,.welcome-orbit,.welcome-progress span{animation:none}.welcome-progress span{transform:none}.welcome-network circle{opacity:.65}}
 
+/* Narrated HomeFlow overview */
+.login-video-button{width:100%;min-height:58px;margin-top:12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 13px;color:var(--navy);text-align:left;background:linear-gradient(135deg,#f5fbfd,#edf8f7);border:1px solid #c8dde5;border-radius:11px;cursor:pointer;transition:transform .16s,border-color .16s,box-shadow .16s}.login-video-button:hover{transform:translateY(-1px);border-color:#73b9cc;box-shadow:0 10px 25px rgba(8,74,104,.1)}.login-video-button>svg:first-child{width:34px;height:34px;padding:8px;color:#fff;background:linear-gradient(135deg,var(--blue),#119c91);border-radius:50%}.login-video-button>svg:last-child{color:var(--blue)}.login-video-button strong,.login-video-button small{display:block}.login-video-button strong{font-size:10px}.login-video-button small{margin-top:3px;color:var(--muted);font-size:8px}
+.video-modal-backdrop{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:24px;background:rgba(4,24,37,.82);backdrop-filter:blur(12px);animation:video-fade .2s ease both}.video-modal{width:min(1120px,96vw);overflow:hidden;color:#fff;background:#071f32;border:1px solid rgba(255,255,255,.18);border-radius:20px;box-shadow:0 38px 110px rgba(0,0,0,.5);animation:video-rise .32s cubic-bezier(.2,.8,.2,1) both}.video-modal>header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px 20px;background:linear-gradient(135deg,#0b334d,#0d576d)}.video-modal>header p{margin:0;color:#70d9c6;font-size:9px;font-weight:900;letter-spacing:.13em}.video-modal>header h2{margin:4px 0 0;color:#fff;font-size:18px;letter-spacing:-.015em}.video-modal>header button{width:38px;height:38px;flex:0 0 auto;display:grid;place-items:center;color:#fff;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:10px;cursor:pointer}.video-modal video{width:100%;max-height:calc(100vh - 190px);display:block;background:#020a0f;aspect-ratio:16/9}.video-modal>footer{max-width:none;margin:0;display:flex;align-items:center;gap:8px;padding:12px 18px;color:#bad0da;background:#0a2a40;border:0;font-size:9px}.video-modal>footer svg{flex:0 0 auto;color:#70d9c6}@keyframes video-fade{from{opacity:0}to{opacity:1}}@keyframes video-rise{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+@media(max-width:620px){.video-modal-backdrop{padding:10px}.video-modal{width:100%;border-radius:14px}.video-modal>header{align-items:flex-start;padding:14px}.video-modal>header h2{font-size:14px}.video-modal video{max-height:60vh}.video-modal>footer{align-items:flex-start;padding:11px 13px;line-height:1.45}}
+
 /* Official HomeFlow identity and workspace placement */
 .brand{
   height:62px;
@@ -664,6 +669,7 @@ body{
 .dashboard-hero-actions{display:flex;align-items:flex-end;flex-direction:column;gap:14px;flex:0 0 auto}
 .dashboard-live{display:flex;align-items:center;gap:8px;padding:8px 11px;color:#d9f7f0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:999px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(8px)}
 .dashboard-live i{width:8px;height:8px;background:#58d9bd;border-radius:50%;box-shadow:0 0 0 5px rgba(88,217,189,.14),0 0 18px rgba(88,217,189,.8)}
+.dashboard-hero-buttons{display:flex;align-items:center;gap:9px}.dashboard-video-launch{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;color:#fff;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-radius:8px;font:inherit;font-size:9px;font-weight:800;cursor:pointer;backdrop-filter:blur(8px);transition:background .16s,transform .16s}.dashboard-video-launch:hover{transform:translateY(-1px);background:rgba(255,255,255,.16)}
 .view-dashboard .page-header .button-secondary{color:#075b78;background:#fff;border-color:#fff;box-shadow:0 12px 28px rgba(0,20,32,.2)}
 
 .dashboard-stack{gap:24px}
@@ -717,6 +723,7 @@ body{
   .view-dashboard .page-header h1{font-size:33px}
   .dashboard-hero-actions{width:100%;align-items:stretch;gap:11px}
   .dashboard-live{width:max-content}
+  .dashboard-hero-buttons{align-items:stretch;flex-direction:column}.dashboard-video-launch{width:100%}
   .view-dashboard .page-header .button{width:100%;display:flex}
   .view-dashboard .kpi-grid{grid-template-columns:1fr 1fr;gap:12px}
   .view-dashboard .kpi-card:nth-child(-n+2),.view-dashboard .kpi-card:nth-child(n+3){grid-column:span 1;min-height:156px;padding:19px 17px}

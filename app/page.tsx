@@ -469,7 +469,7 @@ function HomeFlowLogo() {
   </div>;
 }
 
-function LoginScreen({ code, error, onCodeChange, onSubmit }: { code: string; error: string; onCodeChange: (code: string) => void; onSubmit: () => void }) {
+function LoginScreen({ code, error, onCodeChange, onSubmit, onWatchVideo }: { code: string; error: string; onCodeChange: (code: string) => void; onSubmit: () => void; onWatchVideo: () => void }) {
   return <main className="access-shell login-screen">
     <div className="login-atmosphere" aria-hidden="true"><i /><i /><i /></div>
     <div className="login-page-badge"><ShieldCheck size={15} /> Prototype / Demonstration Data Only</div>
@@ -487,11 +487,29 @@ function LoginScreen({ code, error, onCodeChange, onSubmit }: { code: string; er
         <label className="access-field"><span>Password</span><div><input type="password" value={code} onChange={(event) => onCodeChange(event.target.value)} autoComplete="off" aria-describedby="demo-password-help" /><LockKeyhole size={17} /></div><small id="demo-password-help">Enter the password supplied by the HomeFlow owner.</small></label>
         {error && <p className="login-error" role="alert"><AlertTriangle size={16} /> {error}</p>}
         <button className="access-primary login-submit" type="submit"><LogIn size={19} /> Sign in to HomeFlow <ArrowRight size={18} /></button>
+        <button className="login-video-button" type="button" onClick={onWatchVideo}><Play size={18} /><span><strong>Watch the HomeFlow overview</strong><small>1 minute 48 seconds · Voice-over and captions</small></span><ChevronRight size={18} /></button>
         <div className="login-assurance"><ShieldCheck size={17} /><div><strong>Safe demonstration environment</strong><span>Fictional patients only · No live Trust connections</span></div></div>
       </form>
     </section>
     <footer className="login-footer"><span>Independent innovation concept · Not an official NHS product</span><span>Production use requires Trust-approved identity and access controls</span></footer>
   </main>;
+}
+
+function OverviewVideo({ onClose }: { onClose: () => void }) {
+  return <div className="video-modal-backdrop" role="presentation" onClick={onClose}>
+    <section className="video-modal" role="dialog" aria-modal="true" aria-labelledby="homeflow-video-title" onClick={(event) => event.stopPropagation()}>
+      <header>
+        <div><p>HOMEFLOW IN 108 SECONDS</p><h2 id="homeflow-video-title">How HomeFlow supports safer discharge coordination</h2></div>
+        <button onClick={onClose} aria-label="Close HomeFlow overview video"><X size={22} /></button>
+      </header>
+      <video controls autoPlay playsInline preload="metadata">
+        <source src="./homeflow-overview.mp4" type="video/mp4" />
+        <track kind="captions" src="./homeflow-overview.vtt" srcLang="en" label="English" default />
+        Your browser does not support embedded video.
+      </video>
+      <footer><ShieldCheck size={16} /><span>Prototype / Demonstration Data Only · All patients and identifiers shown are fictional.</span></footer>
+    </section>
+  </div>;
 }
 
 function WelcomeScreen() {
@@ -552,6 +570,7 @@ async function playWelcomeSound() {
 
 export default function HomeFlow() {
   const [accessView, setAccessView] = useState<AccessView>(() => typeof window !== "undefined" && window.localStorage.getItem(DEMO_SESSION_KEY) === "active" ? "app" : "login");
+  const [showOverviewVideo, setShowOverviewVideo] = useState(false);
   const [demoAccessCode, setDemoAccessCode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [view, setView] = useState<View>("dashboard");
@@ -924,16 +943,18 @@ export default function HomeFlow() {
     analytics: <Analytics />,
     pilot: <Pilot />,
   };
-  if (accessView === "login") return <LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} />;
+  const overviewVideo = showOverviewVideo ? <OverviewVideo onClose={() => setShowOverviewVideo(false)} /> : null;
+  if (accessView === "login") return <><LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} onWatchVideo={() => setShowOverviewVideo(true)} />{overviewVideo}</>;
   if (accessView === "welcome") return <WelcomeScreen />;
   if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
   const pharmacyWorkspace = view === "pharmacy";
   return <div className={`app-shell ${pharmacyWorkspace ? "pharmacy-mode" : "ward-mode"}`}><div className="prototype-banner"><AlertTriangle size={15} /><strong>HomeFlow Prototype — Demonstration Data</strong><span>No real patient data, messaging or live system integration</span></div>
     {!pharmacyWorkspace && <aside className="sidebar"><div className="brand"><img className="brand-logo" src="./homeflow-logo.png" alt="HomeFlow" /></div><nav aria-label="Ward workspace navigation">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)} title={item.label}><Icon size={19} /><span>{item.short}</span></button>; })}</nav><div className="sidebar-bottom"><button className="demo-reset" onClick={resetDemo}><RefreshCcw size={18} /><span>Reset demo</span></button><div className="not-nhs"><ShieldCheck size={17} /><span>Independent innovation concept<br />Not an official NHS product</span></div></div></aside>}
     <header className="topbar"><div className="topbar-logo"><img src="./homeflow-logo.png" alt="HomeFlow" /></div><div className="topbar-context"><strong>Northview NHS Trust</strong><span>{pharmacyWorkspace ? "Pharmacy operational workspace" : "Fictional demonstration environment"}</span></div><div className="workspace-switcher"><div className="workspace-copy"><small>Switch workspace</small><div className="workspace-select-wrap">{pharmacyWorkspace ? <Pill size={15} /> : <ListChecks size={15} />}<select aria-label="Choose HomeFlow workspace" value={pharmacyWorkspace ? "pharmacy" : "ward"} onChange={(event) => navigate(event.target.value === "pharmacy" ? "pharmacy" : "board")}><option value="ward">Ward coordination</option><option value="pharmacy">Pharmacy operations</option></select><ChevronDown size={15} /></div></div></div><div className="topbar-actions">{!pharmacyWorkspace && <button className="ward-display-launch" onClick={openWardDisplay} aria-label="Open privacy-safe ward display"><MonitorUp size={17} /><span>Ward display</span></button>}<div className="demo-switch"><span>Demo Mode</span><button role="switch" aria-checked={demoMode} className={demoMode ? "on" : ""} onClick={() => setDemoMode((m) => !m)}><i /></button></div><div className="updated"><Clock3 size={16} /><span>Updated {new Date(updatedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span></div><div className="demo-account"><UserRoundCheck size={17} /><span><small>Official account</small><strong>{OFFICIAL_EMAIL}</strong></span><button onClick={signOutDemo} aria-label="Sign out of the HomeFlow demo" title="Sign out"><LogOut size={17} /></button></div></div></header>
-    <main className={`main-content view-${view}`}><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <div className="dashboard-hero-actions"><span className="dashboard-live"><i /> Live demo position</span><Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button></div>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>
+    <main className={`main-content view-${view}`}><section className="page-header"><div><p>{screenCopy[view].eyebrow}</p><h1>{screenCopy[view].title}</h1><span>{screenCopy[view].subtitle}</span></div>{view === "dashboard" && <div className="dashboard-hero-actions"><span className="dashboard-live"><i /> Live demo position</span><div className="dashboard-hero-buttons"><button className="dashboard-video-launch" onClick={() => setShowOverviewVideo(true)}><Play size={16} /> Watch 108-second overview</button><Button variant="secondary" onClick={() => navigate("board")}>Open ward board <ArrowRight size={17} /></Button></div></div>}</section>{content[view]}<footer><div className="footer-mark"><Home size={16} /> HomeFlow</div><p>Concept prototype · Fictional data only · Proposed connections require formal approval</p><span>Dragons’ Den 2026</span></footer></main>
     {!pharmacyWorkspace && <div className="mobile-nav">{wardNavItems.filter((item) => ["dashboard", "board", "community", "family"].includes(item.id)).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}<button className={mobileMenuOpen || !["dashboard", "board", "community", "family"].includes(view) ? "active" : ""} onClick={() => setMobileMenuOpen(true)} aria-haspopup="dialog" aria-expanded={mobileMenuOpen}><Menu size={18} /><span>More</span></button></div>}
     {mobileMenuOpen && !pharmacyWorkspace ? <div className="mobile-menu-backdrop" role="presentation" onClick={() => setMobileMenuOpen(false)}><section className="mobile-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" onClick={(event) => event.stopPropagation()}><header><div><span>HomeFlow</span><h2 id="mobile-menu-title">All ward tools</h2></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Close all ward tools"><X size={21} /></button></header><nav aria-label="All mobile ward tools">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><span className="mobile-menu-icon"><Icon size={20} /></span><span><strong>{item.short}</strong><small>{item.label}</small></span>{view === item.id ? <CheckCircle2 size={18} /> : <ChevronRight size={18} />}</button>; })}</nav><p><ShieldCheck size={15} /> Ward tools only · demonstration data</p></section></div> : null}
+    {overviewVideo}
     {toast && <div className="toast" role="status"><CheckCircle2 size={19} /><span>{toast}</span><button onClick={() => setToast(null)} aria-label="Dismiss"><X size={16} /></button></div>}
   </div>;
 }
