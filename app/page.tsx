@@ -99,7 +99,7 @@ const ttoStageCopy: Record<TtoStage, { label: string; owner: string; tone: Rag }
   "awaiting-prescription": { label: "Awaiting prescription", owner: "Medical team", tone: "Amber" },
   submitted: { label: "Submitted to pharmacy", owner: "Pharmacy", tone: "Amber" },
   received: { label: "Received by pharmacy", owner: "Pharmacy", tone: "Amber" },
-  clarification: { label: "Clarification required", owner: "Prescriber", tone: "Red" },
+  clarification: { label: "Ward clarification required", owner: "Ward team", tone: "Red" },
   preparing: { label: "In preparation", owner: "Pharmacy", tone: "Amber" },
   ready: { label: "Ready for collection", owner: "Ward team", tone: "Green" },
   delivered: { label: "Delivered to ward", owner: "Ward team", tone: "Green" },
@@ -125,7 +125,7 @@ const screenCopy: Record<View, { eyebrow: string; title: string; subtitle: strin
   board: { eyebrow: "Live coordination view · fictional patients", title: "Ward discharge board", subtitle: "See who is leaving, what is holding them back and who owns the next action." },
   risk: { eyebrow: "Priority view · fictional patients", title: "Patients at risk of discharge delay", subtitle: "See every at-risk patient, the reason for concern, the responsible owner and the next required action." },
   journey: { eyebrow: "HomeFlow intelligence · fictional demo patient", title: "What will unlock this discharge?", subtitle: "Transparent workflow guidance identifies the next action, owner, target and reason—without making a clinical decision." },
-  pharmacy: { eyebrow: "Role view · pharmacy operations · fictional patients", title: "TTO work, visible from request to ward", subtitle: "Prioritise expected discharges, update progress and return clarification to the right prescriber without relying on telephone chasing." },
+  pharmacy: { eyebrow: "Role view · pharmacy operations · fictional patients", title: "TTO work, visible from request to ward", subtitle: "Prioritise expected discharges, update progress and send prescription queries back to the ward for prescriber follow-up without relying on telephone chasing." },
   community: { eyebrow: "Care transition · simulated secure workflow", title: "Close the loop with community teams", subtitle: "Send a structured, verified update and see whether the receiving service has read, acknowledged and accepted the next action." },
   family: { eyebrow: "Simulated communication · nominated contact", title: "Help families prepare before the ward is ready", subtitle: "One clear early alert gives the likely discharge time, manages expectations and makes the family response visible to the ward." },
   escalation: { eyebrow: "Automated detection · demo only", title: "Spot overdue actions before they become lost hours", subtitle: "HomeFlow highlights the barrier, owner and next step—without contacting anyone in this prototype." },
@@ -161,7 +161,7 @@ function UnlockDischarge({ patient, barrierComplete, familyState, tto, onFamily,
     "awaiting-prescription": "Submit the discharge prescription",
     submitted: "Acknowledge the TTO in Pharmacy",
     received: "Begin preparing the discharge medicines",
-    clarification: "Answer Pharmacy’s prescription query",
+    clarification: "Coordinate Pharmacy’s query with the prescriber",
     preparing: "Complete preparation of the discharge medicines",
     ready: "Collect the discharge medicines from Pharmacy",
     delivered: "Complete the final discharge check",
@@ -320,7 +320,8 @@ function Escalation({ patient, escalated, acknowledged, barrierComplete, onEscal
     </section></div>;
 }
 
-function PharmacyQueue({ patients, records, activity, onAdvance, onClarification, onAcknowledge }: { patients: Patient[]; records: Record<string, TtoRecord>; activity: Record<string, ActivityEntry[]>; onAdvance: (patientId: string) => void; onClarification: (patientId: string) => void; onAcknowledge: (patientId: string) => void }) {
+function PharmacyQueue({ patients, records, activity, onAdvance, onClarification, onAcknowledge }: { patients: Patient[]; records: Record<string, TtoRecord>; activity: Record<string, ActivityEntry[]>; onAdvance: (patientId: string) => void; onClarification: (patientId: string, clarification: string) => void; onAcknowledge: (patientId: string) => void }) {
+  const [clarificationDrafts, setClarificationDrafts] = useState<Record<string, string>>({});
   const queue = Object.entries(records).flatMap(([patientId, record]) => {
     const patient = patients.find((item) => item.id === patientId);
     return patient ? [{ patient, record }] : [];
@@ -329,7 +330,7 @@ function PharmacyQueue({ patients, records, activity, onAdvance, onClarification
   const urgent = queue.filter(({ patient, record }) => record.priority === "Urgent" || record.stage === "clarification" || hasPharmacyEscalation(patient.id)).length;
   const escalatedToPharmacy = queue.filter(({ patient }) => hasPharmacyEscalation(patient.id)).length;
   const ready = queue.filter(({ record }) => record.stage === "ready").length;
-  const nextAction = (stage: TtoStage) => stage === "awaiting-prescription" ? "Confirm submitted" : stage === "submitted" ? "Accept into pharmacy" : stage === "received" ? "Start preparation" : stage === "clarification" ? "Clarification resolved" : stage === "preparing" ? "Mark ready" : stage === "ready" ? "Confirm ward delivery" : "Delivered";
+  const nextAction = (stage: TtoStage) => stage === "awaiting-prescription" ? "Confirm submitted" : stage === "submitted" ? "Accept into pharmacy" : stage === "received" ? "Start preparation" : stage === "clarification" ? "Ward confirmed resolved" : stage === "preparing" ? "Mark ready" : stage === "ready" ? "Confirm ward delivery" : "Delivered";
   return <div className="screen-stack">
     <section className="workflow-summary" aria-label="Pharmacy queue summary"><article><Pill /><div><span>Active TTO queue</span><strong>{queue.filter(({ record }) => record.stage !== "delivered").length}</strong><small>Fictional patients requiring coordination</small></div></article><article className="summary-alert"><AlertTriangle /><div><span>Action required</span><strong>{urgent}</strong><small>{escalatedToPharmacy ? `${escalatedToPharmacy} ward escalation${escalatedToPharmacy === 1 ? "" : "s"} included` : "Urgent or awaiting clarification"}</small></div></article><article className="summary-ready"><CheckCircle2 /><div><span>Ready for ward</span><strong>{ready}</strong><small>Awaiting collection or delivery</small></div></article></section>
     <section className="role-scope"><ShieldCheck size={20} /><div><strong>Operational coordination only</strong><p>Prescribing, clinical screening and dispensing remain in the approved clinical and pharmacy systems. This prototype records workflow status only.</p></div></section>
@@ -339,7 +340,9 @@ function PharmacyQueue({ patients, records, activity, onAdvance, onClarification
       const patientActivity = activity[patient.id] ?? [];
       const pharmacyEscalation = patientActivity.find((entry) => entry.kind === "escalation" && entry.action.toLowerCase().includes("pharmacy"));
       const pharmacyAcknowledgement = pharmacyEscalation ? patientActivity.find((entry) => entry.kind === "acknowledgement" && entry.action.toLowerCase().includes("pharmacy")) : undefined;
-      return <article className={`panel pharmacy-card stage-${stage.tone.toLowerCase()} ${pharmacyEscalation ? "has-ward-escalation" : ""}`} key={patient.id}><header><div><span className="queue-id">DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>{patient.ward} · {patient.bed} · expected {patient.expected.toLowerCase()}</p></div><StatusPill status={stage.tone} /></header>{pharmacyEscalation ? <div className={`pharmacy-escalation ${pharmacyAcknowledgement ? "acknowledged" : ""}`}><div className="pharmacy-escalation-icon">{pharmacyAcknowledgement ? <CheckCircle2 size={19} /> : <BellRing size={19} />}</div><div><span>Ward escalation · {pharmacyEscalation.time}</span><strong>{pharmacyAcknowledgement ? "Acknowledged by Pharmacy" : "Escalated to Pharmacy"}</strong><small>{pharmacyAcknowledgement ? `Receipt confirmed at ${pharmacyAcknowledgement.time}; the ward escalation trail has updated.` : `${pharmacyEscalation.actor} flagged this patient for pharmacy attention. Awaiting acknowledgement.`}</small></div></div> : null}<div className="pharmacy-stage"><div className="stage-icon">{complete ? <CheckCircle2 /> : record.stage === "clarification" ? <AlertTriangle /> : <Pill />}</div><div><span>Current TTO stage</span><strong>{stage.label}</strong><small>Current owner: {stage.owner}</small></div></div><dl className="queue-details"><div><dt>Submitted</dt><dd>{record.submittedAt}</dd></div><div><dt>Target</dt><dd>{record.target}</dd></div><div><dt>Priority</dt><dd>{record.priority}</dd></div><div><dt>Assigned</dt><dd>{record.assignee}</dd></div></dl><p className="queue-note">{record.note}</p><footer>{pharmacyEscalation ? <Button variant={pharmacyAcknowledgement ? "success" : "secondary"} onClick={() => onAcknowledge(patient.id)} disabled={Boolean(pharmacyAcknowledgement)}>{pharmacyAcknowledgement ? <CheckCircle2 size={16} /> : <UserRoundCheck size={16} />} {pharmacyAcknowledgement ? "Pharmacy acknowledged" : "Acknowledge escalation"}</Button> : null}<Button variant="secondary" onClick={() => onClarification(patient.id)} disabled={complete || record.stage === "clarification"}><MessageSquareText size={16} /> Request clarification</Button><Button variant={complete ? "success" : "primary"} onClick={() => onAdvance(patient.id)} disabled={complete}>{complete ? <CheckCircle2 size={16} /> : <ArrowRight size={16} />} {nextAction(record.stage)}</Button></footer></article>;
+      const clarificationOpen = Object.prototype.hasOwnProperty.call(clarificationDrafts, patient.id);
+      const clarificationText = clarificationDrafts[patient.id] ?? "";
+      return <article className={`panel pharmacy-card stage-${stage.tone.toLowerCase()} ${pharmacyEscalation ? "has-ward-escalation" : ""}`} key={patient.id}><header><div><span className="queue-id">DEMO-{String(basePatients.findIndex((item) => item.id === patient.id) + 101)}</span><h2>{patient.name}</h2><p>{patient.ward} · {patient.bed} · expected {patient.expected.toLowerCase()}</p></div><StatusPill status={stage.tone} /></header>{pharmacyEscalation ? <div className={`pharmacy-escalation ${pharmacyAcknowledgement ? "acknowledged" : ""}`}><div className="pharmacy-escalation-icon">{pharmacyAcknowledgement ? <CheckCircle2 size={19} /> : <BellRing size={19} />}</div><div><span>Ward escalation · {pharmacyEscalation.time}</span><strong>{pharmacyAcknowledgement ? "Acknowledged by Pharmacy" : "Escalated to Pharmacy"}</strong><small>{pharmacyAcknowledgement ? `Receipt confirmed at ${pharmacyAcknowledgement.time}; the ward escalation trail has updated.` : `${pharmacyEscalation.actor} flagged this patient for pharmacy attention. Awaiting acknowledgement.`}</small></div></div> : null}<div className="pharmacy-stage"><div className="stage-icon">{complete ? <CheckCircle2 /> : record.stage === "clarification" ? <AlertTriangle /> : <Pill />}</div><div><span>Current TTO stage</span><strong>{stage.label}</strong><small>Current owner: {stage.owner}</small></div></div><dl className="queue-details"><div><dt>Submitted</dt><dd>{record.submittedAt}</dd></div><div><dt>Target</dt><dd>{record.target}</dd></div><div><dt>Priority</dt><dd>{record.priority}</dd></div><div><dt>Assigned</dt><dd>{record.assignee}</dd></div></dl><p className="queue-note">{record.note}</p>{clarificationOpen ? <div className="clarification-editor"><label htmlFor={`clarification-${patient.id}`}>What clarification is required?</label><textarea id={`clarification-${patient.id}`} value={clarificationText} onChange={(event) => setClarificationDrafts((current) => ({ ...current, [patient.id]: event.target.value }))} rows={3} placeholder="For example: Please confirm the intended dose and frequency recorded in the approved prescribing system." autoFocus /><small>This is a coordination message only. Do not prescribe or amend medicines in HomeFlow.</small><div><Button variant="quiet" onClick={() => setClarificationDrafts((current) => { const next = { ...current }; delete next[patient.id]; return next; })}>Cancel</Button><Button variant="primary" onClick={() => { onClarification(patient.id, clarificationText); setClarificationDrafts((current) => { const next = { ...current }; delete next[patient.id]; return next; }); }} disabled={!clarificationText.trim()}><MessageSquareText size={16} /> Send to ward</Button></div></div> : null}<footer>{pharmacyEscalation ? <Button variant={pharmacyAcknowledgement ? "success" : "secondary"} onClick={() => onAcknowledge(patient.id)} disabled={Boolean(pharmacyAcknowledgement)}>{pharmacyAcknowledgement ? <CheckCircle2 size={16} /> : <UserRoundCheck size={16} />} {pharmacyAcknowledgement ? "Pharmacy acknowledged" : "Acknowledge escalation"}</Button> : null}<Button variant="secondary" onClick={() => setClarificationDrafts((current) => ({ ...current, [patient.id]: "" }))} disabled={complete || record.stage === "clarification" || clarificationOpen}><MessageSquareText size={16} /> Request clarification</Button><Button variant={complete ? "success" : "primary"} onClick={() => onAdvance(patient.id)} disabled={complete}>{complete ? <CheckCircle2 size={16} /> : <ArrowRight size={16} />} {nextAction(record.stage)}</Button></footer></article>;
     })}</section>
     <div className="risk-privacy"><RefreshCcw size={17} /> Every demo update is time-stamped and immediately synchronised with the ward views in this browser.</div>
   </div>;
@@ -586,7 +589,7 @@ export default function HomeFlow() {
       family: update?.familyState === "confirmed" ? "Collection confirmed" : update?.familyState === "support" ? "Support required" : update?.familyState === "contact" ? "Contact requested" : patient.family,
       update: patientReady ? "All actions complete · just now" : barrierComplete ? "Main barrier complete · just now" : patient.update,
     };
-    if (tto?.stage === "clarification") return { ...coordinatedPatient, rag: "Red" as Rag, barrier: "TTO clarification", owner: "Medical team", deadline: tto.target, update: "Pharmacy requested clarification · just now" };
+    if (tto?.stage === "clarification") return { ...coordinatedPatient, rag: "Red" as Rag, barrier: "TTO clarification", owner: "Ward team", deadline: tto.target, update: "Pharmacy query sent to ward · contact prescriber" };
     if (patient.id === "margaret" && tto && tto.stage !== "delivered") return { ...coordinatedPatient, rag: "Amber" as Rag, barrier: `TTO · ${ttoStageCopy[tto.stage].label}`, owner: ttoStageCopy[tto.stage].owner, deadline: tto.target, update: `${ttoStageCopy[tto.stage].label} · just now` };
     if (tto && tto.stage !== "delivered") return { ...coordinatedPatient, update: `TTO: ${ttoStageCopy[tto.stage].label} · just now` };
     return coordinatedPatient;
@@ -712,14 +715,15 @@ export default function HomeFlow() {
     markUpdated();
     showToast(`${patient.name}: ${ttoStageCopy[nextStage].label}. Ward and pharmacy views are synchronised.`);
   }, [appendActivity, markUpdated, showToast, ttoRecords]);
-  const requestTtoClarification = useCallback((patientId: string) => {
+  const requestTtoClarification = useCallback((patientId: string, clarification: string) => {
     const patient = basePatients.find((item) => item.id === patientId);
-    if (!patient) return;
+    const query = clarification.trim();
+    if (!patient || !query) return;
     const previousStage = ttoRecords[patientId]?.stage;
-    setTtoRecords((current) => ({ ...current, [patientId]: { ...current[patientId], stage: "clarification", assignee: "Medical team", note: "Pharmacy needs the prescriber to clarify the verified prescription before preparation can continue." } }));
-    appendActivity(patientId, [{ kind: "pharmacy", action: "Clarification requested", actor: "Pharmacy team", detail: "The fictional request was returned to the medical team.", previous: previousStage ? ttoStageCopy[previousStage].label : "TTO in progress", current: "Clarification required" }]);
+    setTtoRecords((current) => ({ ...current, [patientId]: { ...current[patientId], stage: "clarification", assignee: "Ward team", note: `Pharmacy query: ${query}` } }));
+    appendActivity(patientId, [{ kind: "pharmacy", action: "Clarification sent to ward", actor: "Pharmacy team", detail: `${query} The ward should coordinate with the responsible prescriber; any prescription change remains in the approved prescribing system.`, previous: previousStage ? ttoStageCopy[previousStage].label : "TTO in progress", current: "Ward follow-up required" }]);
     markUpdated();
-    showToast(`${patient.name}: clarification returned to the medical team.`);
+    showToast(`${patient.name}: clarification sent to the ward for prescriber follow-up.`);
   }, [appendActivity, markUpdated, showToast, ttoRecords]);
   const advanceHandover = useCallback((patientId: string) => {
     const patient = basePatients.find((item) => item.id === patientId);

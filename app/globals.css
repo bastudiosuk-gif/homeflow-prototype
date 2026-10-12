@@ -854,3 +854,13 @@ body{
 .unlock-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 26px;background:rgba(3,25,39,.25);border-top:1px solid rgba(255,255,255,.08)}.unlock-footer>span{display:flex;align-items:center;gap:7px;color:#a9c3cf;font-size:9px;line-height:1.4}.unlock-footer>span svg{flex:0 0 auto;color:#70d5c1}.unlock-footer .button{flex:0 0 auto;color:#0a354b;background:#fff;border-color:#fff;box-shadow:0 9px 22px rgba(1,19,31,.2)}
 @media(max-width:900px){.unlock-body{grid-template-columns:1fr}.unlock-details{min-width:0}}
 @media(max-width:620px){.unlock-header{align-items:flex-start;flex-direction:column;padding:20px 19px 16px}.unlock-heading{align-items:flex-start}.unlock-mark{width:42px;height:42px;flex-basis:42px}.unlock-card h2{font-size:20px}.unlock-body{gap:18px;padding:20px 19px}.unlock-priority h3{font-size:25px}.unlock-details{grid-template-columns:1fr}.unlock-details>div:nth-child(2){border-left:0;border-top:1px solid rgba(255,255,255,.1)}.unlock-details>div:last-child{grid-column:auto}.unlock-footer{align-items:stretch;flex-direction:column;padding:15px 19px 19px}.unlock-footer .button{width:100%}}
+
+/* Pharmacy clarification composer: queries return to the ward for prescriber follow-up. */
+.clarification-editor{margin:14px 19px;padding:15px;background:linear-gradient(145deg,#f5f9fc,#fff);border:1px solid #b8d4e4;border-radius:10px;box-shadow:0 8px 20px rgba(19,71,102,.07)}
+.clarification-editor label{display:block;color:var(--navy);font-size:11px;font-weight:900}
+.clarification-editor textarea{width:100%;margin-top:8px;padding:11px 12px;color:var(--ink);font:inherit;font-size:11px;line-height:1.5;resize:vertical;background:#fff;border:1px solid #b9cbd5;border-radius:8px;outline:0}
+.clarification-editor textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,94,184,.12)}
+.clarification-editor>small{display:block;margin-top:7px;color:var(--muted);font-size:8px;line-height:1.45}
+.clarification-editor>div{display:flex;justify-content:flex-end;gap:8px;margin-top:11px}
+.clarification-editor .button{min-height:35px;padding:0 12px;font-size:9px}
+@media(max-width:720px){.clarification-editor{margin-inline:14px}.clarification-editor>div{align-items:stretch;flex-direction:column-reverse}.clarification-editor .button{width:100%}}
