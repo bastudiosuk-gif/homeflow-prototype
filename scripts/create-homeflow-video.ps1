@@ -1,56 +1,12 @@
 param(
   [string]$SourceDeck = "deliverables\HomeFlow_Dragons_Den_Pitch_5000_Ask.pptx",
-  [string]$OutputVideo = "public\homeflow-overview.mp4",
-  [string]$OutputCaptions = "public\homeflow-overview.vtt"
+  [string]$OutputVideo = "public\homeflow-overview-natural.mp4",
+  [string]$OutputCaptions = "public\homeflow-overview-natural.vtt",
+  [string]$PythonExecutable = "python",
+  [string]$NarrationVoice = "en-GB-SoniaNeural"
 )
 
 $ErrorActionPreference = "Stop"
-
-function Get-WavDurationSeconds {
-  param([Parameter(Mandatory = $true)][string]$Path)
-
-  $stream = [System.IO.File]::OpenRead($Path)
-  $reader = New-Object System.IO.BinaryReader($stream)
-  try {
-    $riff = -join ($reader.ReadChars(4))
-    $null = $reader.ReadUInt32()
-    $wave = -join ($reader.ReadChars(4))
-    if ($riff -ne "RIFF" -or $wave -ne "WAVE") {
-      throw "Unexpected audio format in $Path"
-    }
-
-    $byteRate = 0
-    $dataSize = 0
-    while ($stream.Position -lt $stream.Length) {
-      $chunkId = -join ($reader.ReadChars(4))
-      $chunkSize = $reader.ReadUInt32()
-      if ($chunkId -eq "fmt ") {
-        $null = $reader.ReadUInt16()
-        $null = $reader.ReadUInt16()
-        $null = $reader.ReadUInt32()
-        $byteRate = $reader.ReadUInt32()
-        $remaining = $chunkSize - 12
-        if ($remaining -gt 0) { $null = $reader.ReadBytes($remaining) }
-      } elseif ($chunkId -eq "data") {
-        $dataSize = $chunkSize
-        $null = $reader.ReadBytes($chunkSize)
-      } else {
-        $null = $reader.ReadBytes($chunkSize)
-      }
-      if (($chunkSize % 2) -eq 1 -and $stream.Position -lt $stream.Length) {
-        $null = $reader.ReadByte()
-      }
-    }
-
-    if ($byteRate -le 0 -or $dataSize -le 0) {
-      throw "Could not read duration from $Path"
-    }
-    return [Math]::Round($dataSize / $byteRate, 2)
-  } finally {
-    $reader.Dispose()
-    $stream.Dispose()
-  }
-}
 
 function Format-VttTime {
   param([double]$Seconds)
@@ -85,42 +41,29 @@ $timedDeckPath = Join-Path $workDir "HomeFlow_90_Second_Video_Source.pptx"
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetDirectoryName($videoPath)) | Out-Null
 
-$voice = New-Object -ComObject SAPI.SpVoice
-$voice.Rate = -1
-$voice.Volume = 100
-$preferredVoice = $voice.GetVoices() | Where-Object { $_.GetDescription() -like "Microsoft David*" } | Select-Object -First 1
-if ($preferredVoice) { $voice.Voice = $preferredVoice }
-
-$durations = @()
-$audioPaths = @()
-for ($index = 0; $index -lt $narrations.Count; $index++) {
-  $audioPath = Join-Path $workDir ("scene-{0:00}.wav" -f ($index + 1))
-  $stream = New-Object -ComObject SAPI.SpFileStream
-  $stream.Format.Type = 22
-  $stream.Open($audioPath, 3, $false)
-  $voice.AudioOutputStream = $stream
-  $null = $voice.Speak($narrations[$index])
-  $stream.Close()
-  [System.Runtime.InteropServices.Marshal]::ReleaseComObject($stream) | Out-Null
-  $audioPaths += $audioPath
-  $durations += (Get-WavDurationSeconds -Path $audioPath) + 0.7
+$edgeTtsModulePath = Join-Path $root ".codex-tmp\pydeps"
+if (-not (Test-Path (Join-Path $edgeTtsModulePath "edge_tts"))) {
+  throw "edge-tts is not installed in $edgeTtsModulePath. Install it before rendering the neural voice-over."
 }
-[System.Runtime.InteropServices.Marshal]::ReleaseComObject($voice) | Out-Null
-
-$vtt = New-Object System.Collections.Generic.List[string]
-$vtt.Add("WEBVTT")
-$vtt.Add("")
-$cursor = 0.0
-for ($index = 0; $index -lt $captions.Count; $index++) {
-  $start = $cursor
-  $end = $cursor + $durations[$index]
-  $vtt.Add("$($index + 1)")
-  $vtt.Add("$(Format-VttTime $start) --> $(Format-VttTime $end)")
-  $vtt.Add($captions[$index])
-  $vtt.Add("")
-  $cursor = $end
+$previousPythonPath = $env:PYTHONPATH
+$env:PYTHONPATH = $edgeTtsModulePath
+$audioPath = Join-Path $workDir "homeflow-neural-narration.mp3"
+if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
+$fullNarration = $narrations -join " ... "
+$narrationCreated = $false
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+  & $PythonExecutable -m edge_tts --voice $NarrationVoice --rate=-8% --text $fullNarration --write-media $audioPath
+  if ($LASTEXITCODE -eq 0 -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0) {
+    $narrationCreated = $true
+    break
+  }
+  if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
+  Start-Sleep -Seconds (3 * $attempt)
 }
-[System.IO.File]::WriteAllLines($captionsPath, $vtt, [System.Text.UTF8Encoding]::new($false))
+if (-not $narrationCreated) {
+  throw "Neural narration failed after three attempts."
+}
+$env:PYTHONPATH = $previousPythonPath
 
 $powerPoint = New-Object -ComObject PowerPoint.Application
 $presentation = $null
@@ -129,20 +72,40 @@ try {
   # The former integration slide referenced an earlier architecture assumption. It is omitted from the short film.
   $presentation.Slides.Item(4).Delete()
 
+  $audio = $presentation.Slides.Item(1).Shapes.AddMediaObject2($audioPath, 0, -1, -100, -100, 1, 1)
+  $audio.Name = "HomeFlow neural narration"
+  $audio.AnimationSettings.Animate = -1
+  $audio.AnimationSettings.PlaySettings.PlayOnEntry = -1
+  $audio.AnimationSettings.PlaySettings.HideWhileNotPlaying = -1
+  $audio.AnimationSettings.PlaySettings.StopAfterSlides = $presentation.Slides.Count
+  $narrationDuration = [Math]::Round($audio.MediaFormat.Length / 1000, 2)
+  $wordCounts = @($narrations | ForEach-Object { ($_ -split '\s+' | Where-Object { $_ }).Count })
+  $totalWords = ($wordCounts | Measure-Object -Sum).Sum
+  $durations = @($wordCounts | ForEach-Object { [Math]::Round(($narrationDuration * $_ / $totalWords), 2) })
+  $durations[$durations.Count - 1] += 1.0
+
   for ($index = 0; $index -lt $presentation.Slides.Count; $index++) {
     $slide = $presentation.Slides.Item($index + 1)
     $transition = $slide.SlideShowTransition
     $transition.AdvanceOnClick = 0
     $transition.AdvanceOnTime = -1
     $transition.AdvanceTime = [Math]::Max(7, $durations[$index])
-
-    $audio = $slide.Shapes.AddMediaObject2($audioPaths[$index], 0, -1, -100, -100, 1, 1)
-    $audio.Name = "HomeFlow narration $($index + 1)"
-    $audio.AnimationSettings.Animate = -1
-    $audio.AnimationSettings.PlaySettings.PlayOnEntry = -1
-    $audio.AnimationSettings.PlaySettings.HideWhileNotPlaying = -1
-    $audio.AnimationSettings.PlaySettings.StopAfterSlides = 1
   }
+
+  $vtt = New-Object System.Collections.Generic.List[string]
+  $vtt.Add("WEBVTT")
+  $vtt.Add("")
+  $cursor = 0.0
+  for ($index = 0; $index -lt $captions.Count; $index++) {
+    $start = $cursor
+    $end = $cursor + $durations[$index]
+    $vtt.Add("$($index + 1)")
+    $vtt.Add("$(Format-VttTime $start) --> $(Format-VttTime $end)")
+    $vtt.Add($captions[$index])
+    $vtt.Add("")
+    $cursor = $end
+  }
+  [System.IO.File]::WriteAllLines($captionsPath, $vtt, [System.Text.UTF8Encoding]::new($false))
 
   if (Test-Path $timedDeckPath) { Remove-Item -LiteralPath $timedDeckPath -Force }
   if (Test-Path $videoPath) { Remove-Item -LiteralPath $videoPath -Force }
