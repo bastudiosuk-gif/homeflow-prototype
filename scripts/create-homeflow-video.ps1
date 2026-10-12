@@ -1,7 +1,6 @@
 param(
-  [string]$SourceDeck = "deliverables\HomeFlow_Dragons_Den_Pitch_5000_Ask.pptx",
-  [string]$OutputVideo = "public\homeflow-overview-geordie.mp4",
-  [string]$OutputCaptions = "public\homeflow-overview-geordie.vtt",
+  [string]$OutputVideo = "public\homeflow-patient-journey.mp4",
+  [string]$OutputCaptions = "public\homeflow-patient-journey.vtt",
   [string]$PythonExecutable = "python",
   [string]$NarrationVoice = "en-GB-RyanNeural"
 )
@@ -19,180 +18,137 @@ function ConvertTo-OfficeRgb {
   return $Red + (256 * $Green) + (65536 * $Blue)
 }
 
-function Export-FeatureCrop {
-  param(
-    [Parameter(Mandatory = $true)][string]$Source,
-    [Parameter(Mandatory = $true)][string]$Destination,
-    [Parameter(Mandatory = $true)][int]$X,
-    [Parameter(Mandatory = $true)][int]$Y,
-    [Parameter(Mandatory = $true)][int]$Width,
-    [Parameter(Mandatory = $true)][int]$Height
-  )
-
+function Export-ScreenCrop {
+  param([string]$Source, [string]$Destination, [int]$Top)
   Add-Type -AssemblyName System.Drawing
   $sourceBitmap = [System.Drawing.Bitmap]::new($Source)
   try {
-    $rectangle = [System.Drawing.Rectangle]::new($X, $Y, $Width, $Height)
+    $rectangle = [System.Drawing.Rectangle]::new(0, $Top, 1440, 810)
     $crop = $sourceBitmap.Clone($rectangle, $sourceBitmap.PixelFormat)
-    try {
-      $crop.Save($Destination, [System.Drawing.Imaging.ImageFormat]::Png)
-    } finally {
-      $crop.Dispose()
-    }
-  } finally {
-    $sourceBitmap.Dispose()
-  }
+    try { $crop.Save($Destination, [System.Drawing.Imaging.ImageFormat]::Png) }
+    finally { $crop.Dispose() }
+  } finally { $sourceBitmap.Dispose() }
 }
 
-function Add-FeatureFocusSlide {
-  param(
-    [Parameter(Mandatory = $true)]$Presentation,
-    [Parameter(Mandatory = $true)][int]$AfterSlide,
-    [Parameter(Mandatory = $true)][string]$ImagePath,
-    [Parameter(Mandatory = $true)][string]$Title,
-    [Parameter(Mandatory = $true)][string]$Subtitle
-  )
+function Add-PatientTracker {
+  param($Slide, [string]$TrackerText)
+  $trackerLabel = $Slide.Shapes.AddTextbox(1, 712, 9, 210, 16)
+  $trackerLabel.TextFrame.TextRange.Text = "FOLLOWING ONE FICTIONAL PATIENT"
+  $trackerLabel.TextFrame.TextRange.Font.Name = "Aptos"
+  $trackerLabel.TextFrame.TextRange.Font.Size = 8
+  $trackerLabel.TextFrame.TextRange.Font.Bold = -1
+  $trackerLabel.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 190 18 60
+  $trackerLabel.TextFrame.TextRange.ParagraphFormat.Alignment = 2
 
-  $slide = $Presentation.Slides.Add($AfterSlide + 1, 12)
-  $slide.FollowMasterBackground = 0
-  $slide.Background.Fill.Solid()
-  $slide.Background.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 7 29 49
+  $trackerOval = $Slide.Shapes.AddShape(9, 708, 25, 220, 42)
+  $trackerOval.Fill.Solid()
+  $trackerOval.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
+  $trackerOval.Fill.Transparency = 0.08
+  $trackerOval.Line.ForeColor.RGB = ConvertTo-OfficeRgb 225 29 72
+  $trackerOval.Line.Weight = 4
+  $trackerOval.TextFrame.TextRange.Text = $TrackerText
+  $trackerOval.TextFrame.TextRange.Font.Name = "Aptos"
+  $trackerOval.TextFrame.TextRange.Font.Size = 12
+  $trackerOval.TextFrame.TextRange.Font.Bold = -1
+  $trackerOval.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 136 19 55
+  $trackerOval.TextFrame.TextRange.ParagraphFormat.Alignment = 2
+  $trackerOval.TextFrame.VerticalAnchor = 3
+}
 
-  $eyebrow = $slide.Shapes.AddTextbox(1, 42, 24, 470, 20)
-  $eyebrow.TextFrame.TextRange.Text = "FEATURE CLOSE-UP · HOMEFLOW PROTOTYPE"
-  $eyebrow.TextFrame.TextRange.Font.Name = "Aptos"
-  $eyebrow.TextFrame.TextRange.Font.Size = 10
-  $eyebrow.TextFrame.TextRange.Font.Bold = -1
-  $eyebrow.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 45 212 191
-
-  $heading = $slide.Shapes.AddTextbox(1, 42, 46, 700, 38)
-  $heading.TextFrame.TextRange.Text = $Title
-  $heading.TextFrame.TextRange.Font.Name = "Aptos Display"
-  $heading.TextFrame.TextRange.Font.Size = 24
-  $heading.TextFrame.TextRange.Font.Bold = -1
-  $heading.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
-
-  $subheading = $slide.Shapes.AddTextbox(1, 42, 82, 830, 24)
-  $subheading.TextFrame.TextRange.Text = $Subtitle
-  $subheading.TextFrame.TextRange.Font.Name = "Aptos"
-  $subheading.TextFrame.TextRange.Font.Size = 12
-  $subheading.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 194 214 228
-
-  $frame = $slide.Shapes.AddShape(5, 37, 115, 886, 374)
-  $frame.Fill.Solid()
-  $frame.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
-  $frame.Line.ForeColor.RGB = ConvertTo-OfficeRgb 45 212 191
-  $frame.Line.Weight = 3
-
-  $picture = $slide.Shapes.AddPicture($ImagePath, 0, -1, 43, 121, 874, 362)
-  $zoomEffect = $slide.TimeLine.MainSequence.AddEffect($picture, 23, 0, 2)
-  $zoomEffect.Timing.Duration = 1.0
-
-  $badge = $slide.Shapes.AddShape(5, 726, 25, 190, 22)
-  $badge.Fill.Solid()
-  $badge.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 247 214
-  $badge.Line.Visible = 0
-  $badge.TextFrame.TextRange.Text = "DEMONSTRATION DATA ONLY"
-  $badge.TextFrame.TextRange.Font.Name = "Aptos"
-  $badge.TextFrame.TextRange.Font.Size = 8
-  $badge.TextFrame.TextRange.Font.Bold = -1
-  $badge.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 103 76 0
-  $badge.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-
-  $footer = $slide.Shapes.AddTextbox(1, 42, 503, 870, 16)
-  $footer.TextFrame.TextRange.Text = "HomeFlow · Fictional patients and identifiers · No live Trust connection"
-  $footer.TextFrame.TextRange.Font.Name = "Aptos"
-  $footer.TextFrame.TextRange.Font.Size = 8
-  $footer.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 148 177 197
+function Add-RedOval {
+  param($Slide, [double]$Left, [double]$Top, [double]$Width, [double]$Height)
+  $oval = $Slide.Shapes.AddShape(9, $Left, $Top, $Width, $Height)
+  $oval.Fill.Visible = 0
+  $oval.Line.ForeColor.RGB = ConvertTo-OfficeRgb 225 29 72
+  $oval.Line.Weight = 5
+  $pulse = $Slide.TimeLine.MainSequence.AddEffect($oval, 59, 0, 2)
+  $pulse.Timing.Duration = 0.8
 }
 
 $narrations = @(
-  "HomeFlow is a discharge coordination prototype. It helps the patient, the ward team and the family prepare for discharge together. Every person and identifier shown in this video is fictional demonstration data.",
-  "A patient may be clinically ready and still wait. Medication, transport, equipment or family collection can remain unresolved. HomeFlow brings the main barrier, its owner, the target time and family readiness into one clear ward view.",
-  "Staff can open a patient's journey and see what will unlock discharge next. Pharmacy progress, escalation, community handover and family updates sit alongside a time stamped accountability trail, so the next action stays visible without adding repeated documentation.",
-  "Families receive one clear update with the likely collection time and notice that a short delay may still occur. They can confirm collection, request support or ask for contact. The ward sees the response immediately in the prototype.",
-  "A separate privacy safe ward display shows expected discharges, barriers, owners, deadlines and family readiness at a glance. It avoids full names and uses fictional bed numbers and demo identifiers suitable for presentation.",
-  "The proposed next step is a small pilot on one ward for eight to twelve weeks. The request is five thousand pounds for configuration, staff testing, evaluation and governance support, using existing Trust capability wherever possible."
+  "This is HomeFlow, a fictional discharge coordination prototype. Rather than tour separate presentation slides, let us follow one test patient through the site. Margaret T., demonstration identifier one-zero-one, is expected to leave today.",
+  "The ward board is the starting point. Margaret is expected at two o'clock. Her status is amber because TTO medication is still outstanding. The same row shows the responsible team, the target time and that her family is ready to collect.",
+  "Opening Margaret's journey answers the practical question: what will unlock this discharge? Pharmacy completion is due at eleven. The timeline records completed actions, their times, the current owner and the next step, so staff do not need to chase the story across several places.",
+  "If the target passes, HomeFlow makes the delay visible. Margaret's TTO is thirty-five minutes overdue. The screen shows the responsible medical and pharmacy teams, the patient impact and a recommended next action. Staff can escalate from here, then record when the barrier is complete.",
+  "The family view keeps the same journey moving outside the ward. One clear update gives the likely collection time and explains that a short delay may still occur. The relative can confirm collection, request support or ask for contact, and the ward can see that response in the prototype.",
+  "On the privacy-safe ward display, Margaret's full name disappears. Staff follow bed D-twelve and demo identifier one-zero-one instead. The board shows the same barrier, owner, target and family readiness. When the ward updates Margaret in HomeFlow, this display changes too. That is HomeFlow: one patient journey, one shared operational picture."
 )
 
 $captions = @(
-  "HomeFlow connects discharge readiness, ward visibility and family preparation.",
-  "One view shows the barrier, owner, target time and family readiness.",
-  "The patient journey keeps the next action and accountability trail visible.",
-  "Families can confirm collection, request support or ask for contact.",
-  "The privacy-safe ward display gives the team a shared live view.",
-  "A £5,000 one-ward pilot would test value before any larger investment."
+  "Meet Margaret T., fictional demo patient DEMO-101.",
+  "The ward board shows her status, barrier, owner, target and family readiness.",
+  "Her journey shows what will unlock discharge and the timestamped next step.",
+  "An overdue TTO can be escalated to the responsible team and tracked to completion.",
+  "One family update supports collection, support requests and contact requests.",
+  "The privacy-safe ward display uses DEMO-101 instead of Margaret's full name."
+)
+
+$scenes = @(
+  @{ File = "01-executive-dashboard.png"; Top = 100; Tracker = "Margaret T. · DEMO-101"; Oval = $null },
+  @{ File = "02-ward-discharge-board.png"; Top = 210; Tracker = "Margaret T. · DEMO-101"; Oval = @(174, 220, 110, 34) },
+  @{ File = "03-patient-discharge-journey.png"; Top = 170; Tracker = "Margaret T. · DEMO-101"; Oval = @(744, 306, 165, 52) },
+  @{ File = "05-barrier-escalation.png"; Top = 190; Tracker = "Margaret T. · DEMO-101"; Oval = @(174, 261, 260, 43) },
+  @{ File = "04-family-communication.png"; Top = 210; Tracker = "Margaret T. · DEMO-101"; Oval = $null },
+  @{ File = "06-ward-display.png"; Top = 100; Tracker = "Bed D-12 · DEMO-101"; Oval = @(36, 260, 160, 70) }
 )
 
 $root = (Resolve-Path ".").Path
 $bundledPython = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-if ($PythonExecutable -eq "python" -and (Test-Path $bundledPython)) {
-  $PythonExecutable = $bundledPython
-}
-$sourcePath = (Resolve-Path $SourceDeck).Path
+if ($PythonExecutable -eq "python" -and (Test-Path $bundledPython)) { $PythonExecutable = $bundledPython }
 $videoPath = [System.IO.Path]::GetFullPath((Join-Path $root $OutputVideo))
 $captionsPath = [System.IO.Path]::GetFullPath((Join-Path $root $OutputCaptions))
-$workDir = Join-Path $root ".codex-tmp\homeflow-video"
-$timedDeckPath = Join-Path $workDir "HomeFlow_90_Second_Video_Source.pptx"
+$workDir = Join-Path $root ".codex-tmp\homeflow-patient-video"
+$timedDeckPath = Join-Path $workDir "HomeFlow_Patient_Journey_Video_Source.pptx"
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 New-Item -ItemType Directory -Force -Path ([System.IO.Path]::GetDirectoryName($videoPath)) | Out-Null
 
-$focusSpecs = @(
-  @{ File = "01-executive-dashboard.png"; X = 230; Y = 110; Width = 1180; Height = 664; Title = "One clear operational picture"; Subtitle = "Readiness, barriers and family preparation appear together." },
-  @{ File = "02-ward-discharge-board.png"; X = 230; Y = 350; Width = 1180; Height = 664; Title = "Barrier, owner and target time"; Subtitle = "The next action is visible to the whole ward team." },
-  @{ File = "03-patient-discharge-journey.png"; X = 230; Y = 370; Width = 1180; Height = 664; Title = "What will unlock this discharge?"; Subtitle = "The journey shows the next step and who is accountable." },
-  @{ File = "04-family-communication.png"; X = 230; Y = 360; Width = 1180; Height = 664; Title = "One clear family update"; Subtitle = "Collection, support and contact responses return to the ward." },
-  @{ File = "06-ward-display.png"; X = 40; Y = 140; Width = 1360; Height = 765; Title = "Privacy-safe ward display"; Subtitle = "Expected discharges, risk, ownership and readiness at a glance." },
-  @{ File = "10-dragons-den-pilot.png"; X = 230; Y = 370; Width = 1180; Height = 664; Title = "A small, measurable first step"; Subtitle = "One ward · 8–12 weeks · £5,000." }
-)
-$focusImages = @()
-for ($index = 0; $index -lt $focusSpecs.Count; $index++) {
-  $spec = $focusSpecs[$index]
-  $sourceImage = Join-Path $root ("screenshots\homeflow\" + $spec.File)
-  $focusImage = Join-Path $workDir ("focus-{0:00}.png" -f ($index + 1))
-  Export-FeatureCrop -Source $sourceImage -Destination $focusImage -X $spec.X -Y $spec.Y -Width $spec.Width -Height $spec.Height
-  $focusImages += $focusImage
+$sceneImages = @()
+for ($index = 0; $index -lt $scenes.Count; $index++) {
+  $scene = $scenes[$index]
+  $sourceImage = Join-Path $root ("screenshots\homeflow\" + $scene.File)
+  $sceneImage = Join-Path $workDir ("scene-{0:00}.png" -f ($index + 1))
+  Export-ScreenCrop -Source $sourceImage -Destination $sceneImage -Top $scene.Top
+  $sceneImages += $sceneImage
 }
 
 $edgeTtsModulePath = Join-Path $root ".codex-tmp\pydeps"
-if (-not (Test-Path (Join-Path $edgeTtsModulePath "edge_tts"))) {
-  throw "edge-tts is not installed in $edgeTtsModulePath. Install it before rendering the neural voice-over."
-}
+if (-not (Test-Path (Join-Path $edgeTtsModulePath "edge_tts"))) { throw "edge-tts is not installed." }
 $previousPythonPath = $env:PYTHONPATH
 $env:PYTHONPATH = $edgeTtsModulePath
-$audioPath = Join-Path $workDir "homeflow-neural-narration.mp3"
+$audioPath = Join-Path $workDir "homeflow-patient-narration.mp3"
 if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
 $fullNarration = $narrations -join " ... "
 $narrationCreated = $false
 for ($attempt = 1; $attempt -le 3; $attempt++) {
-  & $PythonExecutable -m edge_tts --voice $NarrationVoice --rate=-6% --pitch=-4Hz --text $fullNarration --write-media $audioPath
-  if ($LASTEXITCODE -eq 0 -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0) {
-    $narrationCreated = $true
-    break
-  }
+  & $PythonExecutable -m edge_tts --voice $NarrationVoice --rate=+4% --pitch=-4Hz --text $fullNarration --write-media $audioPath
+  if ($LASTEXITCODE -eq 0 -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0) { $narrationCreated = $true; break }
   if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
   Start-Sleep -Seconds (3 * $attempt)
 }
-if (-not $narrationCreated) {
-  throw "Neural narration failed after three attempts."
-}
 $env:PYTHONPATH = $previousPythonPath
+if (-not $narrationCreated) { throw "Patient-journey narration failed after three attempts." }
 
 $powerPoint = New-Object -ComObject PowerPoint.Application
 $presentation = $null
 try {
-  $presentation = $powerPoint.Presentations.Open($sourcePath, $false, $false, $false)
-  # The former integration slide referenced an earlier architecture assumption. It is omitted from the short film.
-  $presentation.Slides.Item(4).Delete()
+  $presentation = $powerPoint.Presentations.Add()
+  $presentation.PageSetup.SlideWidth = 960
+  $presentation.PageSetup.SlideHeight = 540
 
-  # Insert a feature close-up after every overview slide. Working backwards preserves the intended order.
-  for ($index = $focusSpecs.Count - 1; $index -ge 0; $index--) {
-    $spec = $focusSpecs[$index]
-    Add-FeatureFocusSlide -Presentation $presentation -AfterSlide ($index + 1) -ImagePath $focusImages[$index] -Title $spec.Title -Subtitle $spec.Subtitle
+  for ($index = 0; $index -lt $scenes.Count; $index++) {
+    $slide = $presentation.Slides.Add($index + 1, 12)
+    $picture = $slide.Shapes.AddPicture($sceneImages[$index], 0, -1, 0, 0, 960, 540)
+    $screenEffect = $slide.TimeLine.MainSequence.AddEffect($picture, 10, 0, 2)
+    $screenEffect.Timing.Duration = 0.5
+    Add-PatientTracker -Slide $slide -TrackerText $scenes[$index].Tracker
+    if ($scenes[$index].Oval) {
+      $oval = $scenes[$index].Oval
+      Add-RedOval -Slide $slide -Left $oval[0] -Top $oval[1] -Width $oval[2] -Height $oval[3]
+    }
   }
 
   $audio = $presentation.Slides.Item(1).Shapes.AddMediaObject2($audioPath, 0, -1, -100, -100, 1, 1)
-  $audio.Name = "HomeFlow neural narration"
+  $audio.Name = "HomeFlow patient journey narration"
   $audio.AnimationSettings.Animate = -1
   $audio.AnimationSettings.PlaySettings.PlayOnEntry = -1
   $audio.AnimationSettings.PlaySettings.HideWhileNotPlaying = -1
@@ -200,34 +156,22 @@ try {
   $narrationDuration = [Math]::Round($audio.MediaFormat.Length / 1000, 2)
   $wordCounts = @($narrations | ForEach-Object { ($_ -split '\s+' | Where-Object { $_ }).Count })
   $totalWords = ($wordCounts | Measure-Object -Sum).Sum
-  $sceneDurations = @($wordCounts | ForEach-Object { [Math]::Round(($narrationDuration * $_ / $totalWords), 2) })
-  $sceneDurations[$sceneDurations.Count - 1] += 1.0
-  $durations = @()
-  foreach ($sceneDuration in $sceneDurations) {
-    $overviewDuration = [Math]::Min(4.5, [Math]::Max(3.5, $sceneDuration * 0.32))
-    $durations += $overviewDuration
-    $durations += [Math]::Max(6.0, $sceneDuration - $overviewDuration)
-  }
+  $durations = @($wordCounts | ForEach-Object { [Math]::Round(($narrationDuration * $_ / $totalWords), 2) })
+  $durations[$durations.Count - 1] += 1.0
 
   for ($index = 0; $index -lt $presentation.Slides.Count; $index++) {
-    $slide = $presentation.Slides.Item($index + 1)
-    $transition = $slide.SlideShowTransition
+    $transition = $presentation.Slides.Item($index + 1).SlideShowTransition
     $transition.AdvanceOnClick = 0
     $transition.AdvanceOnTime = -1
-    $transition.AdvanceTime = [Math]::Max(7, $durations[$index])
+    $transition.AdvanceTime = [Math]::Max(8, $durations[$index])
   }
 
   $vtt = New-Object System.Collections.Generic.List[string]
-  $vtt.Add("WEBVTT")
-  $vtt.Add("")
+  $vtt.Add("WEBVTT"); $vtt.Add("")
   $cursor = 0.0
   for ($index = 0; $index -lt $captions.Count; $index++) {
-    $start = $cursor
-    $end = $cursor + $sceneDurations[$index]
-    $vtt.Add("$($index + 1)")
-    $vtt.Add("$(Format-VttTime $start) --> $(Format-VttTime $end)")
-    $vtt.Add($captions[$index])
-    $vtt.Add("")
+    $start = $cursor; $end = $cursor + $durations[$index]
+    $vtt.Add("$($index + 1)"); $vtt.Add("$(Format-VttTime $start) --> $(Format-VttTime $end)"); $vtt.Add($captions[$index]); $vtt.Add("")
     $cursor = $end
   }
   [System.IO.File]::WriteAllLines($captionsPath, $vtt, [System.Text.UTF8Encoding]::new($false))
@@ -236,29 +180,25 @@ try {
   if (Test-Path $videoPath) { Remove-Item -LiteralPath $videoPath -Force }
   $presentation.SaveAs($timedDeckPath)
   $presentation.CreateVideo($videoPath, $true, 5, 1080, 30, 85)
-
   $deadline = (Get-Date).AddMinutes(15)
   while ((Get-Date) -lt $deadline) {
     $status = $presentation.CreateVideoStatus
     if ($status -eq 3) { break }
-    if ($status -eq 4) { throw "PowerPoint failed to create the HomeFlow video." }
+    if ($status -eq 4) { throw "PowerPoint failed to create the HomeFlow patient-journey video." }
     Start-Sleep -Seconds 5
   }
-  if ($presentation.CreateVideoStatus -ne 3 -or -not (Test-Path $videoPath)) {
-    throw "Timed out while creating the HomeFlow video."
-  }
+  if ($presentation.CreateVideoStatus -ne 3 -or -not (Test-Path $videoPath)) { throw "Timed out while creating the HomeFlow patient-journey video." }
 } finally {
   if ($presentation) { $presentation.Close() }
   $powerPoint.Quit()
   if ($presentation) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($presentation) | Out-Null }
   [System.Runtime.InteropServices.Marshal]::ReleaseComObject($powerPoint) | Out-Null
-  [GC]::Collect()
-  [GC]::WaitForPendingFinalizers()
+  [GC]::Collect(); [GC]::WaitForPendingFinalizers()
 }
 
 [PSCustomObject]@{
   video = $videoPath
   captions = $captionsPath
-  durationSeconds = [Math]::Round(($sceneDurations | Measure-Object -Sum).Sum, 1)
+  durationSeconds = [Math]::Round(($durations | Measure-Object -Sum).Sum, 1)
   bytes = (Get-Item $videoPath).Length
 } | ConvertTo-Json -Compress
