@@ -427,9 +427,15 @@ function LoginScreen({ code, error, onCodeChange, onSubmit }: { code: string; er
 function WelcomeScreen() {
   return <main className="welcome-screen" aria-live="polite" aria-label="Welcome to HomeFlow">
     <div className="welcome-atmosphere" aria-hidden="true"><i /><i /><i /><i /></div>
+    <svg className="welcome-network" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M-40 420 C180 250 280 510 500 310 S820 120 1040 260" />
+      <path d="M-40 190 C190 370 350 80 560 250 S810 510 1040 345" />
+      <circle cx="174" cy="319" r="5" /><circle cx="383" cy="403" r="4" /><circle cx="618" cy="233" r="5" /><circle cx="836" cy="212" r="4" />
+    </svg>
     <section className="welcome-content">
-      <div className="welcome-logo"><HomeFlowLogo /></div>
-      <p>Welcome to HomeFlow</p>
+      <div className="welcome-orbit" aria-hidden="true"><i /><i /><i /></div>
+      <div className="welcome-logo"><span className="welcome-shine" aria-hidden="true" /><HomeFlowLogo /></div>
+      <p><span>Welcome to</span><strong>HomeFlow</strong></p>
       <div className="welcome-progress" aria-hidden="true"><span /></div>
     </section>
   </main>;
@@ -440,29 +446,35 @@ async function playWelcomeSound() {
     const audioContext = new AudioContext();
     if (audioContext.state === "suspended") await audioContext.resume();
     const master = audioContext.createGain();
+    const warmth = audioContext.createBiquadFilter();
+    warmth.type = "lowpass";
+    warmth.frequency.setValueAtTime(2800, audioContext.currentTime);
     master.gain.setValueAtTime(0.0001, audioContext.currentTime);
-    master.gain.exponentialRampToValueAtTime(0.16, audioContext.currentTime + 0.08);
-    master.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 2.35);
-    master.connect(audioContext.destination);
+    master.gain.exponentialRampToValueAtTime(0.14, audioContext.currentTime + 0.1);
+    master.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 3.15);
+    master.connect(warmth);
+    warmth.connect(audioContext.destination);
     [
-      { frequency: 523.25, start: 0, duration: 1.25 },
-      { frequency: 659.25, start: 0.18, duration: 1.35 },
-      { frequency: 783.99, start: 0.43, duration: 1.45 },
-      { frequency: 1046.5, start: 0.78, duration: 1.45 },
-    ].forEach(({ frequency, start, duration }) => {
+      { frequency: 261.63, start: 0, duration: 2.5, type: "sine" as OscillatorType, volume: 0.055 },
+      { frequency: 523.25, start: 0.04, duration: 1.45, type: "sine" as OscillatorType, volume: 0.1 },
+      { frequency: 659.25, start: 0.25, duration: 1.55, type: "sine" as OscillatorType, volume: 0.1 },
+      { frequency: 783.99, start: 0.52, duration: 1.65, type: "triangle" as OscillatorType, volume: 0.065 },
+      { frequency: 1046.5, start: 0.88, duration: 1.8, type: "sine" as OscillatorType, volume: 0.09 },
+      { frequency: 1318.51, start: 1.22, duration: 1.55, type: "sine" as OscillatorType, volume: 0.04 },
+    ].forEach(({ frequency, start, duration, type, volume }) => {
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
-      oscillator.type = "sine";
+      oscillator.type = type;
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + start);
       gain.gain.setValueAtTime(0.0001, audioContext.currentTime + start);
-      gain.gain.exponentialRampToValueAtTime(0.11, audioContext.currentTime + start + 0.08);
+      gain.gain.exponentialRampToValueAtTime(volume, audioContext.currentTime + start + 0.1);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + start + duration);
       oscillator.connect(gain);
       gain.connect(master);
       oscillator.start(audioContext.currentTime + start);
       oscillator.stop(audioContext.currentTime + start + duration + 0.05);
     });
-    window.setTimeout(() => { void audioContext.close(); }, 2700);
+    window.setTimeout(() => { void audioContext.close(); }, 3400);
   } catch {
     // Browsers may block audio despite a user-initiated sign-in; the visual welcome still continues.
   }
