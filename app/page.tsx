@@ -477,8 +477,8 @@ function LoginScreen({ code, error, onCodeChange, onSubmit, onWatchVideo }: { co
       <header className="login-unified-header">
         <HomeFlowLogo />
         <p className="access-kicker">CONNECTED DISCHARGE COORDINATION</p>
-        <h1>Preparing every discharge, together.</h1>
-        <p>A clear, shared view of readiness, barriers, ownership and family preparation.</p>
+        <h1>Less time waiting. More time at home.</h1>
+        <p>Smarter hospital discharge coordination</p>
       </header>
       <form className="login-card" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
         <div className="login-card-heading"><div className="login-icon"><LockKeyhole size={21} /></div><div><p className="access-kicker">SECURE DEMO ACCESS</p><h2>Welcome back</h2></div></div>
