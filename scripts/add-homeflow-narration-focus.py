@@ -7,6 +7,8 @@ import json
 import subprocess
 from pathlib import Path
 import imageio_ffmpeg
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT=Path(__file__).resolve().parents[1]
 WORK=ROOT/'.codex-tmp'/'homeflow-story'
@@ -82,12 +84,57 @@ for a,b,x,y,zoom in CAMERAS:
     cx+=f'+({x-960})*{env}'
     cy+=f'+({y-540})*{env}'
 
-filters=[]
+# Render an alpha-only focus layer separately: rounded, antialiased outlines,
+# soft turquoise light and a restrained scrim outside the clear focus window.
+# Its fade envelope changes only on entry/exit; the held light never pulsates.
+overlay_path=WORK/'rounded-focus.mov'
+size=(1280,720)
+ratio=2/3
+layers=[]
 for label,a,b,x,y,w,h in HIGHLIGHTS:
-    for spread,thickness,alpha in [(9,9,0.08),(5,5,0.16),(0,3,0.95)]:
-        filters.append(f"drawbox=x={x-spread}:y={y-spread}:w={w+spread*2}:h={h+spread*2}:color=0x18bbeb@{alpha}:t={thickness}:enable='between(t,{a},{b})'")
-    filters.append(f"drawbox=x={x}:y={y}:w={w}:h={h}:color=0x18bbeb@0.035:t=fill:enable='between(t,{a},{b})'")
-filters += [
+    bounds=tuple(round(v*ratio) for v in (x-6,y-6,x+w+6,y+h+6))
+    radius=min(13, (bounds[3]-bounds[1])/3)
+    hole=Image.new('L',size)
+    ImageDraw.Draw(hole).rounded_rectangle(bounds,radius=radius,fill=255)
+    dim=np.asarray(hole.filter(ImageFilter.GaussianBlur(2)),dtype=np.float32)
+    dim=((255-dim)*0.18).astype(np.uint8)
+    dim[667:]=0  # Keep the demonstration footer clear.
+    layer=Image.new('RGBA',size,(5,28,40,0))
+    layer.putalpha(Image.fromarray(dim))
+    edge=Image.new('L',size)
+    ImageDraw.Draw(edge).rounded_rectangle(bounds,radius=radius,outline=255,width=2)
+    for blur,opacity in [(9,0.22),(4,0.32),(0.6,0.90)]:
+        alpha=edge.filter(ImageFilter.GaussianBlur(blur))
+        alpha=alpha.point(lambda value: round(value*opacity))
+        glow=Image.new('RGBA',size,(28,205,202,0))
+        glow.putalpha(alpha)
+        layer=Image.alpha_composite(layer,glow)
+    layers.append((a,b,np.asarray(layer).copy()))
+
+encoder=subprocess.Popen([FFMPEG,'-hide_banner','-loglevel','error','-y',
+    '-f','rawvideo','-pix_fmt','rgba','-s','1280x720','-r','30','-i','pipe:0',
+    '-an','-c:v','qtrle','-pix_fmt','argb',str(overlay_path)],stdin=subprocess.PIPE)
+blank=np.zeros((720,1280,4),dtype=np.uint8).tobytes()
+try:
+    for frame in range(4500):
+        t=frame/30
+        active=[(a,b,rgba) for a,b,rgba in layers if a <= t <= b]
+        if not active:
+            encoder.stdin.write(blank)
+            continue
+        a,b,rgba=active[0]
+        strength=min(1,max(0,(t-a)/0.24),max(0,(b-t)/0.24))
+        strength=strength*strength*(3-2*strength)
+        output=rgba.copy()
+        output[:,:,3]=(output[:,:,3].astype(np.float32)*strength).astype(np.uint8)
+        encoder.stdin.write(output.tobytes())
+finally:
+    encoder.stdin.close()
+if encoder.wait():
+    raise RuntimeError('Could not encode the rounded focus layer')
+
+filters=[
+ '[1:v]scale=1920:1080:flags=lanczos[light];[0:v][light]overlay=0:0:format=auto',
  'scale=3840:2160:flags=lanczos',
  f"zoompan=z='{z}':x='max(0,min(iw-iw/zoom,2*({cx})-iw/zoom/2))':y='max(0,min(ih-ih/zoom,2*({cy})-ih/zoom/2))':d=1:s=1920x1080:fps=30",
  "drawbox=x=0:y=1001:w=1920:h=79:color=0x052f43:t=fill:enable='between(t,11.75,136.575)'",
@@ -102,11 +149,12 @@ filter_file=WORK/'narration-focus.ffscript'
 filter_file.write_text(',\n'.join(filters),encoding='utf-8')
 target=ROOT/'public'/'homeflow-focused-journey.mp4'
 command=[FFMPEG,'-hide_banner','-loglevel','error','-y','-i',str(ROOT/'public'/'homeflow-live-journey.mp4'),
- '-filter_script:v',str(filter_file),'-c:v','libx264','-preset','fast','-crf','17','-threads','4',
+ '-i',str(overlay_path),'-filter_complex_script',str(filter_file),'-filter_complex_threads','1',
+ '-map','0:a','-c:v','libx264','-preset','fast','-crf','17','-threads','4',
  '-c:a','copy','-t','150','-movflags','+faststart',str(target)]
 result=subprocess.run(command,capture_output=True,text=True)
 if result.returncode:
     raise RuntimeError(result.stderr[-6000:])
 (WORK/'narration-focus-audit.json').write_text(json.dumps({'camera_moves':CAMERAS,'spoken_highlights':HIGHLIGHTS,
- 'voice_replaced':False,'highlight_style':'Steady light, no pulsing','duration':150},indent=2))
+ 'voice_replaced':False,'highlight_style':'Rounded turquoise outline, soft steady glow, outside dimming, smooth fades','duration':150},indent=2))
 print(json.dumps({'video':str(target),'bytes':target.stat().st_size,'voice_replaced':False}),flush=True)
