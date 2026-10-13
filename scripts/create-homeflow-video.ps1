@@ -120,7 +120,7 @@ function Add-CinematicBackdrop {
 
 function Add-CinematicChrome {
   param($Slide, [string]$SceneLabel, [int]$SceneNumber, [bool]$IntroducePage = $false)
-  $labelWidth = if ($IntroducePage) { 280 } else { 184 }
+  $labelWidth = if ($IntroducePage) { 645 } else { 610 }
   $labelHeight = if ($IntroducePage) { 42 } else { 28 }
   $scenePill = $Slide.Shapes.AddShape(5, 24, 18, $labelWidth, $labelHeight)
   $scenePill.Fill.Solid()
@@ -130,7 +130,7 @@ function Add-CinematicChrome {
   $scenePill.Line.Weight = 1.5
   $scenePill.TextFrame.TextRange.Text = ("0{0}  •  {1}" -f $SceneNumber, $SceneLabel.ToUpperInvariant())
   $scenePill.TextFrame.TextRange.Font.Name = "Aptos"
-  $scenePill.TextFrame.TextRange.Font.Size = if ($IntroducePage) { 16 } else { 9 }
+  $scenePill.TextFrame.TextRange.Font.Size = if ($IntroducePage) { 14 } else { 9 }
   $scenePill.TextFrame.TextRange.Font.Bold = -1
   $scenePill.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
   $scenePill.TextFrame.VerticalAnchor = 3
@@ -185,77 +185,79 @@ $captions = @(
 )
 
 $scenes = @(
-  @{ File = "01-executive-dashboard.png"; Top = 100; Label = "Overview"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+  @{ File = "01-executive-dashboard.png"; Top = 100; Label = "Discharge flow, visible at a glance"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
     @{ Intro = $true; Oval = $null },
-    @{ Weight = 0.42; Oval = @(179, 208, 121, 96) }
+    @{ Oval = @(179, 208, 121, 96) },
+    @{ Oval = @(306, 208, 121, 96) },
+    @{ Oval = $null }
   ) },
-  @{ File = "02-ward-discharge-board.png"; Top = 210; Label = "Ward board"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+  @{ File = "02-ward-discharge-board.png"; Top = 210; Label = "Ward discharge board"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
     @{ Intro = $true; Oval = $null },
     @{ Oval = @(174, 216, 205, 48) },
     @{ Oval = @(390, 216, 172, 48) },
     @{ Oval = @(555, 216, 210, 48) }
   ) },
-  @{ File = "03-patient-discharge-journey.png"; Top = 170; Label = "Patient journey"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+  @{ File = "03-patient-discharge-journey.png"; Top = 170; Label = "What will unlock this discharge?"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
     @{ Intro = $true; Oval = $null },
     @{ Weight = 0.22; Oval = @(178, 170, 758, 80) },
     @{ Oval = @(194, 315, 524, 128) }
   ) },
-  @{ File = "05-barrier-escalation.png"; Top = 190; Label = "Escalation"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+  @{ File = "05-barrier-escalation.png"; Top = 190; Label = "Spot overdue actions before they become lost hours"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
     @{ Intro = $true; Oval = $null },
     @{ Weight = 0.19; Oval = @(178, 147, 758, 84) },
     @{ Weight = 0.18; Oval = @(193, 313, 234, 48); Oval2 = @(435, 313, 240, 48) },
     @{ Weight = 0.13; Oval = @(191, 460, 260, 42) }
   ) },
-  @{ File = "04-family-communication.png"; Top = 210; Label = "Family update"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+  @{ File = "11-pharmacy-workspace.jpg"; Top = 535; Label = "TTO work, visible from request to ward"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Intro = $true; Oval = $null },
+    @{ Oval = @(45, 120, 850, 150) }
+  ) },
+  @{ File = "12-pharmacy-progress.jpg"; Top = 535; Label = "TTO work, visible from request to ward"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Oval = @(70, 120, 700, 95) },
+    @{ Oval = @(580, 370, 320, 70) }
+  ) },
+  @{ File = "04-family-communication.png"; Top = 210; Label = "Help families prepare before the ward is ready"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
     @{ Intro = $true; Oval = $null },
     @{ Oval = @(205, 315, 190, 140) },
     @{ Weight = 0.30; Oval = @(451, 346, 334, 42) }
   ) },
-  @{ File = "06-ward-display.png"; Top = 100; Label = "Ward display"; Tracker = "Bed D-12 · DEMO-101"; Highlights = @(
+  @{ File = "06-ward-display.png"; Top = 100; Label = "Today’s ward discharge position"; Tracker = "Bed D-12 · DEMO-101"; Highlights = @(
     @{ Intro = $true; Oval = $null },
     @{ Weight = 0.22; Oval = @(36, 260, 170, 70) },
-    @{ Weight = 0.20; Oval = @(35, 258, 900, 74) }
-  ) },
-  @{ File = "05-barrier-escalation.png"; Top = 190; Label = "Spot & act"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Intro = $true; Oval = $null },
-    @{ Oval = @(191, 460, 260, 42) }
-  ) },
-  @{ File = "11-pharmacy-workspace.jpg"; Top = 535; Label = "Pharmacy"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Intro = $true; Oval = $null },
-    @{ Oval = @(45, 120, 850, 150) }
-  ) },
-  @{ File = "12-pharmacy-progress.jpg"; Top = 535; Label = "Pharmacy progress"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Oval = @(580, 370, 320, 70) }
+    @{ Weight = 0.20; Oval = @(35, 258, 900, 74) },
+    @{ Oval = $null }
   ) }
 )
 
 # Every spoken cue has its own audio clip on its own visual frame.
 # PowerPoint measures the actual clip length; no word-count estimates are used.
 $cueTexts = @(
-  "Welcome to HomeFlow. The overview summarises discharge readiness across the ward.",
-  "Follow fictional patient Margaret T., expected home today.",
-  "The ward board shows each patient's status, barriers and ownership.",
-  "Margaret, bed twelve, is expected home at two o'clock.",
-  "She is amber because TTO medication is outstanding.",
-  "Her owner, eleven o'clock target and family readiness appear here.",
-  "Patient journey shows discharge steps, deadlines and progress.",
-  "Margaret needs pharmacy completion by eleven to unlock discharge.",
-  "The timeline shows completed actions, timestamps and the next owner.",
-  "Escalation shows overdue barriers, responsible teams and next actions.",
-  "Margaret's deadline is thirty-five minutes overdue.",
-  "Her responsible teams and target appear together.",
-  "Escalate here, then record completion.",
-  "Family communication supports collection planning and family responses.",
-  "Margaret's relative prepares for collection, then receives the ready message.",
-  "Her relative can confirm, request support or contact.",
-  "Ward display gives staff a shared, privacy-safe discharge picture.",
-  "Margaret appears as bed D-twelve, demo one-zero-one.",
-  "Her barrier, owner, target and family readiness update with the prototype.",
-  "HomeFlow compares incomplete actions with deadlines. Margaret's TTO triggers an overdue flag.",
-  "Staff escalate and record completion directly. People resolve the delay.",
-  "The pharmacy workspace tracks TTO requests, preparation, readiness and ward delivery.",
-  "Margaret's TTO has a revised twelve-thirty target. Prescribing stays in approved systems.",
-  "Her stage is now received by pharmacy. Staff can prepare or request clarification; nurses see progress."
+  "Welcome to HomeFlow. Discharge flow, visible at a glance brings readiness, tasks and family preparation together.",
+  "Eighteen means expected discharges today across three demo wards, not total ward patients.",
+  "Six are ready to leave; others have actions outstanding.",
+  "Follow fictional patient Margaret T.",
+  "Ward discharge board shows patients, expected discharge, barriers and action owners.",
+  "Margaret, bed twelve, is expected home today at two o'clock.",
+  "Amber means work remains: her take-home medicines, called TTOs, are outstanding.",
+  "Her team, eleven o'clock target and family readiness appear together.",
+  "What will unlock this discharge? This page shows the next steps.",
+  "Margaret needs pharmacy completion by eleven to unlock progress.",
+  "Timestamps show completed actions. Pharmacy owns the unfinished step; staff can mark it complete.",
+  "Spot overdue actions before they become lost hours. HomeFlow compares unfinished actions with deadlines and shows owners.",
+  "At eleven thirty-five Margaret's action remains incomplete. This red banner flags thirty-five minutes overdue.",
+  "The team and target show who to contact.",
+  "Escalate, then record completion. Staff resolve the delay.",
+  "TTO work, visible from request to ward tracks pharmacy requests through preparation, readiness and delivery.",
+  "Margaret has a revised twelve-thirty target, owner and priority. Prescribing stays in approved systems.",
+  "Accepting Margaret's request changes it to received by pharmacy.",
+  "Start preparation or request clarification. Nurses see progress without chasing.",
+  "Help families prepare before the ward is ready supports collection planning and family responses.",
+  "Margaret's relative prepares for collection. The ready message follows once the ward confirms.",
+  "Confirm collection, request support, or ask the ward to call.",
+  "Today's ward discharge position shares progress on a large ward screen.",
+  "Margaret uses bed D-twelve and demo identifier one-zero-one, keeping her name off this display.",
+  "This row shares her barrier, owner, target and family readiness. Updates appear here.",
+  "HomeFlow connects ward, pharmacy and family around one patient: visible delays, clear ownership and a shared next action."
 )
 
 $root = (Resolve-Path ".").Path

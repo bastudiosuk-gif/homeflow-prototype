@@ -503,8 +503,8 @@ function OverviewVideo({ onClose }: { onClose: () => void }) {
         <button onClick={onClose} aria-label="Close HomeFlow overview video"><X size={22} /></button>
       </header>
       <video controls autoPlay playsInline preload="metadata">
-        <source src="./homeflow-patient-journey.mp4?v=page-intros-pharmacy" type="video/mp4" />
-        <track kind="captions" src="./homeflow-patient-journey.vtt?v=page-intros-pharmacy" srcLang="en" label="English" default />
+        <source src="./homeflow-patient-journey.mp4?v=guided-real-page-titles" type="video/mp4" />
+        <track kind="captions" src="./homeflow-patient-journey.vtt?v=guided-real-page-titles" srcLang="en" label="English" default />
         Your browser does not support embedded video.
       </video>
       <footer><ShieldCheck size={16} /><span>Prototype / Demonstration Data Only · All patients and identifiers shown are fictional.</span></footer>

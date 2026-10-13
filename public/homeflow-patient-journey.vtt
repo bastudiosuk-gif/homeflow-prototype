@@ -1,97 +1,105 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:06.270
-Welcome to HomeFlow. The overview summarises discharge readiness across the ward.
+00:00:00.000 --> 00:00:08.286
+Welcome to HomeFlow. Discharge flow, visible at a glance brings readiness, tasks and family preparation together.
 
 2
-00:00:06.270 --> 00:00:10.932
-Follow fictional patient Margaret T., expected home today.
+00:00:08.286 --> 00:00:14.604
+Eighteen means expected discharges today across three demo wards, not total ward patients.
 
 3
-00:00:10.932 --> 00:00:15.906
-The ward board shows each patient's status, barriers and ownership.
+00:00:14.604 --> 00:00:18.689
+Six are ready to leave; others have actions outstanding.
 
 4
-00:00:15.906 --> 00:00:20.280
-Margaret, bed twelve, is expected home at two o'clock.
+00:00:18.689 --> 00:00:21.863
+Follow fictional patient Margaret T.
 
 5
-00:00:20.280 --> 00:00:24.510
-She is amber because TTO medication is outstanding.
+00:00:21.863 --> 00:00:28.037
+Ward discharge board shows patients, expected discharge, barriers and action owners.
 
 6
-00:00:24.510 --> 00:00:29.148
-Her owner, eleven o'clock target and family readiness appear here.
+00:00:28.037 --> 00:00:32.796
+Margaret, bed twelve, is expected home today at two o'clock.
 
 7
-00:00:29.148 --> 00:00:33.810
-Patient journey shows discharge steps, deadlines and progress.
+00:00:32.796 --> 00:00:39.042
+Amber means work remains: her take-home medicines, called TTOs, are outstanding.
 
 8
-00:00:33.810 --> 00:00:38.400
-Margaret needs pharmacy completion by eleven to unlock discharge.
+00:00:39.042 --> 00:00:43.656
+Her team, eleven o'clock target and family readiness appear together.
 
 9
-00:00:38.400 --> 00:00:43.374
-The timeline shows completed actions, timestamps and the next owner.
+00:00:43.656 --> 00:00:48.894
+What will unlock this discharge? This page shows the next steps.
 
 10
-00:00:43.374 --> 00:00:48.924
-Escalation shows overdue barriers, responsible teams and next actions.
+00:00:48.894 --> 00:00:53.436
+Margaret needs pharmacy completion by eleven to unlock progress.
 
 11
-00:00:48.924 --> 00:00:52.746
-Margaret's deadline is thirty-five minutes overdue.
+00:00:53.436 --> 00:01:00.594
+Timestamps show completed actions. Pharmacy owns the unfinished step; staff can mark it complete.
 
 12
-00:00:52.746 --> 00:00:56.232
-Her responsible teams and target appear together.
+00:01:00.594 --> 00:01:08.928
+Spot overdue actions before they become lost hours. HomeFlow compares unfinished actions with deadlines and shows owners.
 
 13
-00:00:56.232 --> 00:00:59.454
-Escalate here, then record completion.
+00:01:08.928 --> 00:01:16.710
+At eleven thirty-five Margaret's action remains incomplete. This red banner flags thirty-five minutes overdue.
 
 14
-00:00:59.454 --> 00:01:04.188
-Family communication supports collection planning and family responses.
+00:01:16.710 --> 00:01:19.884
+The team and target show who to contact.
 
 15
-00:01:04.188 --> 00:01:08.946
-Margaret's relative prepares for collection, then receives the ready message.
+00:01:19.884 --> 00:01:25.290
+Escalate, then record completion. Staff resolve the delay.
 
 16
-00:01:08.946 --> 00:01:13.248
-Her relative can confirm, request support or contact.
+00:01:25.290 --> 00:01:32.472
+TTO work, visible from request to ward tracks pharmacy requests through preparation, readiness and delivery.
 
 17
-00:01:13.248 --> 00:01:17.838
-Ward display gives staff a shared, privacy-safe discharge picture.
+00:01:32.472 --> 00:01:40.302
+Margaret has a revised twelve-thirty target, owner and priority. Prescribing stays in approved systems.
 
 18
-00:01:17.838 --> 00:01:22.260
-Margaret appears as bed D-twelve, demo one-zero-one.
+00:01:40.302 --> 00:01:44.604
+Accepting Margaret's request changes it to received by pharmacy.
 
 19
-00:01:22.260 --> 00:01:27.642
-Her barrier, owner, target and family readiness update with the prototype.
+00:01:44.604 --> 00:01:51.042
+Start preparation or request clarification. Nurses see progress without chasing.
 
 20
-00:01:27.642 --> 00:01:34.920
-HomeFlow compares incomplete actions with deadlines. Margaret's TTO triggers an overdue flag.
+00:01:51.042 --> 00:01:56.928
+Help families prepare before the ward is ready supports collection planning and family responses.
 
 21
-00:01:34.920 --> 00:01:40.662
-Staff escalate and record completion directly. People resolve the delay.
+00:01:56.928 --> 00:02:03.534
+Margaret's relative prepares for collection. The ready message follows once the ward confirms.
 
 22
-00:01:40.662 --> 00:01:47.004
-The pharmacy workspace tracks TTO requests, preparation, readiness and ward delivery.
+00:02:03.534 --> 00:02:08.148
+Confirm collection, request support, or ask the ward to call.
 
 23
-00:01:47.004 --> 00:01:54.162
-Margaret's TTO has a revised twelve-thirty target. Prescribing stays in approved systems.
+00:02:08.148 --> 00:02:12.930
+Today's ward discharge position shares progress on a large ward screen.
 
 24
-00:01:54.162 --> 00:02:02.088
-Her stage is now received by pharmacy. Staff can prepare or request clarification; nurses see progress.
+00:02:12.930 --> 00:02:19.608
+Margaret uses bed D-twelve and demo identifier one-zero-one, keeping her name off this display.
+
+25
+00:02:19.608 --> 00:02:26.766
+This row shares her barrier, owner, target and family readiness. Updates appear here.
+
+26
+00:02:26.766 --> 00:02:34.884
+HomeFlow connects ward, pharmacy and family around one patient: visible delays, clear ownership and a shared next action.
