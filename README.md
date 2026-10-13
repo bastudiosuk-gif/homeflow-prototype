@@ -44,4 +44,6 @@ The female narration is synthetic (`en-GB-SoniaNeural`), not a human voice recor
 
 `scripts/add-homeflow-narration-focus.py` adds smooth camera moves and word-timed highlights to the original live film: rounded corners, a fine turquoise outline, a soft steady glow, subtle outside dimming and smooth entrance/exit fades. It does not replace the voice. A human voice recording remains outstanding for the final presentation.
 
+The opening and closing use the presenter-supplied `public/homeflow-journey-title.png` (One Shared Journey Home), with a visible demonstration-only label. The highlight outline and steady glow are slightly stronger for large-screen viewing.
+
 `scripts/render-homeflow-live-film.py` uses reviewed source timecodes and measured speech boundaries. It needs `imageio-ffmpeg`, the authored script in `scripts/homeflow-story.json`, and local production inputs under `.codex-tmp/homeflow-story/`: `live-take-01.mp4`, `narration.mp3`, `speech.json` and `edit-audit.json`. Those raw inputs are intentionally excluded from Git; the unedited desktop capture must never be published. Only the reviewed final film and captions are public. `--captions-only` rebuilds captions after the film has been rendered.
