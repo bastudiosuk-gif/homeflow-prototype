@@ -2,7 +2,8 @@ param(
   [string]$OutputVideo = "public\homeflow-patient-journey.mp4",
   [string]$OutputCaptions = "public\homeflow-patient-journey.vtt",
   [string]$PythonExecutable = "python",
-  [string]$NarrationVoice = "en-GB-RyanNeural"
+  [string]$NarrationVoice = "en-GB-RyanNeural",
+  [switch]$ReuseNarration
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,12 +58,105 @@ function Add-PatientTracker {
 
 function Add-RedOval {
   param($Slide, [double]$Left, [double]$Top, [double]$Width, [double]$Height)
+
+  $halo = $Slide.Shapes.AddShape(9, $Left - 5, $Top - 5, $Width + 10, $Height + 10)
+  $halo.Fill.Solid()
+  $halo.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 228 237
+  $halo.Fill.Visible = 0
+  $halo.Line.ForeColor.RGB = ConvertTo-OfficeRgb 251 113 133
+  $halo.Line.Transparency = 0.28
+  $halo.Line.Weight = 2.5
+  try {
+    $halo.Glow.Color.RGB = ConvertTo-OfficeRgb 244 63 94
+    $halo.Glow.Radius = 10
+    $halo.Glow.Transparency = 0.42
+  } catch {}
+
   $oval = $Slide.Shapes.AddShape(9, $Left, $Top, $Width, $Height)
+  $oval.Fill.Solid()
+  $oval.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
   $oval.Fill.Visible = 0
   $oval.Line.ForeColor.RGB = ConvertTo-OfficeRgb 225 29 72
-  $oval.Line.Weight = 5
-  $pulse = $Slide.TimeLine.MainSequence.AddEffect($oval, 59, 0, 2)
-  $pulse.Timing.Duration = 0.8
+  $oval.Line.Weight = 4
+
+  $focusPill = $Slide.Shapes.AddShape(5, $Left + 10, [Math]::Max(5, $Top - 13), 58, 17)
+  $focusPill.Fill.Solid()
+  $focusPill.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 190 18 60
+  $focusPill.Line.Visible = 0
+  $focusPill.TextFrame.TextRange.Text = "IN FOCUS"
+  $focusPill.TextFrame.TextRange.Font.Name = "Aptos"
+  $focusPill.TextFrame.TextRange.Font.Size = 7
+  $focusPill.TextFrame.TextRange.Font.Bold = -1
+  $focusPill.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
+  $focusPill.TextFrame.TextRange.ParagraphFormat.Alignment = 2
+  $focusPill.TextFrame.VerticalAnchor = 3
+
+  $focusDot = $Slide.Shapes.AddShape(9, $Left + 2, [Math]::Max(8, $Top - 8), 10, 10)
+  $focusDot.Fill.Solid()
+  $focusDot.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 251 113 133
+  $focusDot.Line.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
+  $focusDot.Line.Weight = 1.5
+}
+
+function Add-CinematicBackdrop {
+  param($Slide)
+  $backdrop = $Slide.Shapes.AddShape(1, 0, 0, 960, 540)
+  $backdrop.Fill.Solid()
+  $backdrop.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 5 35 54
+  $backdrop.Line.Visible = 0
+
+  $frame = $Slide.Shapes.AddShape(5, 7, 6, 946, 528)
+  $frame.Fill.Solid()
+  $frame.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
+  $frame.Line.ForeColor.RGB = ConvertTo-OfficeRgb 45 212 191
+  $frame.Line.Transparency = 0.35
+  $frame.Line.Weight = 2
+  try {
+    $frame.Shadow.Visible = -1
+    $frame.Shadow.Blur = 14
+    $frame.Shadow.OffsetX = 0
+    $frame.Shadow.OffsetY = 5
+    $frame.Shadow.Transparency = 0.42
+  } catch {}
+}
+
+function Add-CinematicChrome {
+  param($Slide, [string]$SceneLabel, [int]$SceneNumber)
+  $scenePill = $Slide.Shapes.AddShape(5, 24, 18, 184, 28)
+  $scenePill.Fill.Solid()
+  $scenePill.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 4 52 74
+  $scenePill.Fill.Transparency = 0.06
+  $scenePill.Line.ForeColor.RGB = ConvertTo-OfficeRgb 45 212 191
+  $scenePill.Line.Weight = 1.5
+  $scenePill.TextFrame.TextRange.Text = ("0{0}  •  {1}" -f $SceneNumber, $SceneLabel.ToUpperInvariant())
+  $scenePill.TextFrame.TextRange.Font.Name = "Aptos"
+  $scenePill.TextFrame.TextRange.Font.Size = 9
+  $scenePill.TextFrame.TextRange.Font.Bold = -1
+  $scenePill.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
+  $scenePill.TextFrame.VerticalAnchor = 3
+  $scenePill.TextFrame.MarginLeft = 10
+
+  $demoPill = $Slide.Shapes.AddShape(5, 758, 506, 178, 20)
+  $demoPill.Fill.Solid()
+  $demoPill.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 4 52 74
+  $demoPill.Fill.Transparency = 0.08
+  $demoPill.Line.ForeColor.RGB = ConvertTo-OfficeRgb 45 212 191
+  $demoPill.Line.Transparency = 0.25
+  $demoPill.TextFrame.TextRange.Text = "PROTOTYPE  •  DEMO DATA"
+  $demoPill.TextFrame.TextRange.Font.Name = "Aptos"
+  $demoPill.TextFrame.TextRange.Font.Size = 7
+  $demoPill.TextFrame.TextRange.Font.Bold = -1
+  $demoPill.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
+  $demoPill.TextFrame.TextRange.ParagraphFormat.Alignment = 2
+  $demoPill.TextFrame.VerticalAnchor = 3
+
+  for ($dotIndex = 1; $dotIndex -le 6; $dotIndex++) {
+    $dot = $Slide.Shapes.AddShape(9, 26 + (($dotIndex - 1) * 15), 509, 8, 8)
+    $dot.Line.Visible = 0
+    $dot.Fill.Solid()
+    $dot.Fill.ForeColor.RGB = if ($dotIndex -eq $SceneNumber) { ConvertTo-OfficeRgb 45 212 191 } else { ConvertTo-OfficeRgb 148 163 184 }
+    $dot.Fill.Transparency = if ($dotIndex -eq $SceneNumber) { 0.0 } else { 0.35 }
+  }
 }
 
 $narrations = @(
@@ -84,12 +178,47 @@ $captions = @(
 )
 
 $scenes = @(
-  @{ File = "01-executive-dashboard.png"; Top = 100; Tracker = "Margaret T. · DEMO-101"; Oval = $null },
-  @{ File = "02-ward-discharge-board.png"; Top = 210; Tracker = "Margaret T. · DEMO-101"; Oval = @(174, 220, 110, 34) },
-  @{ File = "03-patient-discharge-journey.png"; Top = 170; Tracker = "Margaret T. · DEMO-101"; Oval = @(744, 306, 165, 52) },
-  @{ File = "05-barrier-escalation.png"; Top = 190; Tracker = "Margaret T. · DEMO-101"; Oval = @(174, 261, 260, 43) },
-  @{ File = "04-family-communication.png"; Top = 210; Tracker = "Margaret T. · DEMO-101"; Oval = $null },
-  @{ File = "06-ward-display.png"; Top = 100; Tracker = "Bed D-12 · DEMO-101"; Oval = @(36, 260, 160, 70) }
+  @{ File = "01-executive-dashboard.png"; Top = 100; Label = "Overview"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Weight = 0.58; Oval = @(180, 28, 410, 62) },
+    @{ Weight = 0.42; Oval = @(179, 208, 121, 96) }
+  ) },
+  @{ File = "02-ward-discharge-board.png"; Top = 210; Label = "Ward board"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Weight = 0.18; Oval = @(178, 154, 166, 30) },
+    @{ Weight = 0.14; Oval = @(174, 220, 110, 34) },
+    @{ Weight = 0.14; Oval = @(282, 218, 96, 48) },
+    @{ Weight = 0.12; Oval = @(390, 220, 70, 38) },
+    @{ Weight = 0.14; Oval = @(458, 218, 104, 42) },
+    @{ Weight = 0.15; Oval = @(555, 216, 96, 48) },
+    @{ Weight = 0.13; Oval = @(643, 216, 122, 48) }
+  ) },
+  @{ File = "03-patient-discharge-journey.png"; Top = 170; Label = "Patient journey"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Weight = 0.15; Oval = @(744, 306, 165, 52) },
+    @{ Weight = 0.22; Oval = @(178, 170, 758, 80) },
+    @{ Weight = 0.20; Oval = @(195, 397, 522, 48) },
+    @{ Weight = 0.23; Oval = @(194, 315, 524, 82) },
+    @{ Weight = 0.20; Oval = @(195, 397, 522, 48) }
+  ) },
+  @{ File = "05-barrier-escalation.png"; Top = 190; Label = "Escalation"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Weight = 0.19; Oval = @(178, 147, 758, 84) },
+    @{ Weight = 0.17; Oval = @(192, 260, 260, 44) },
+    @{ Weight = 0.18; Oval = @(193, 313, 234, 48); Oval2 = @(435, 313, 240, 48) },
+    @{ Weight = 0.15; Oval = @(435, 355, 240, 44) },
+    @{ Weight = 0.18; Oval = @(192, 405, 483, 50) },
+    @{ Weight = 0.13; Oval = @(191, 460, 260, 42) }
+  ) },
+  @{ File = "04-family-communication.png"; Top = 210; Label = "Family update"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Weight = 0.20; Oval = @(438, 166, 497, 90) },
+    @{ Weight = 0.30; Oval = @(205, 315, 190, 54) },
+    @{ Weight = 0.20; Oval = @(205, 397, 190, 58) },
+    @{ Weight = 0.30; Oval = @(451, 346, 334, 42) }
+  ) },
+  @{ File = "06-ward-display.png"; Top = 100; Label = "Ward display"; Tracker = "Bed D-12 · DEMO-101"; Highlights = @(
+    @{ Weight = 0.22; Oval = @(36, 260, 170, 70) },
+    @{ Weight = 0.21; Oval = @(416, 260, 228, 70) },
+    @{ Weight = 0.18; Oval = @(638, 260, 104, 70) },
+    @{ Weight = 0.19; Oval = @(742, 260, 192, 70) },
+    @{ Weight = 0.20; Oval = @(35, 258, 900, 74) }
+  ) }
 )
 
 $root = (Resolve-Path ".").Path
@@ -116,14 +245,16 @@ if (-not (Test-Path (Join-Path $edgeTtsModulePath "edge_tts"))) { throw "edge-tt
 $previousPythonPath = $env:PYTHONPATH
 $env:PYTHONPATH = $edgeTtsModulePath
 $audioPath = Join-Path $workDir "homeflow-patient-narration.mp3"
-if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
 $fullNarration = $narrations -join " ... "
-$narrationCreated = $false
-for ($attempt = 1; $attempt -le 3; $attempt++) {
-  & $PythonExecutable -m edge_tts --voice $NarrationVoice --rate=+4% --pitch=-4Hz --text $fullNarration --write-media $audioPath
-  if ($LASTEXITCODE -eq 0 -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0) { $narrationCreated = $true; break }
+$narrationCreated = $ReuseNarration -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0
+if (-not $narrationCreated) {
   if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
-  Start-Sleep -Seconds (3 * $attempt)
+  for ($attempt = 1; $attempt -le 3; $attempt++) {
+    & $PythonExecutable -m edge_tts --voice $NarrationVoice --rate=+4% --pitch=-4Hz --text $fullNarration --write-media $audioPath
+    if ($LASTEXITCODE -eq 0 -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0) { $narrationCreated = $true; break }
+    if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
+    Start-Sleep -Seconds (3 * $attempt)
+  }
 }
 $env:PYTHONPATH = $previousPythonPath
 if (-not $narrationCreated) { throw "Patient-journey narration failed after three attempts." }
@@ -135,42 +266,67 @@ try {
   $presentation.PageSetup.SlideWidth = 960
   $presentation.PageSetup.SlideHeight = 540
 
-  for ($index = 0; $index -lt $scenes.Count; $index++) {
-    $slide = $presentation.Slides.Add($index + 1, 12)
-    $picture = $slide.Shapes.AddPicture($sceneImages[$index], 0, -1, 0, 0, 960, 540)
-    $screenEffect = $slide.TimeLine.MainSequence.AddEffect($picture, 10, 0, 2)
-    $screenEffect.Timing.Duration = 0.5
-    Add-PatientTracker -Slide $slide -TrackerText $scenes[$index].Tracker
-    if ($scenes[$index].Oval) {
-      $oval = $scenes[$index].Oval
-      Add-RedOval -Slide $slide -Left $oval[0] -Top $oval[1] -Width $oval[2] -Height $oval[3]
+  $firstSlide = $presentation.Slides.Add(1, 12)
+  $audio = $firstSlide.Shapes.AddMediaObject2($audioPath, 0, -1, -100, -100, 1, 1)
+  $audio.Name = "HomeFlow patient journey narration"
+  $narrationDuration = [Math]::Round($audio.MediaFormat.Length / 1000, 2)
+  $wordCounts = @($narrations | ForEach-Object { ($_ -split '\s+' | Where-Object { $_ }).Count })
+  $totalWords = ($wordCounts | Measure-Object -Sum).Sum
+  $segmentDurations = @($wordCounts | ForEach-Object { [Math]::Round(($narrationDuration * $_ / $totalWords), 2) })
+  $segmentDurations[$segmentDurations.Count - 1] += 1.0
+
+  $timelineScenes = New-Object System.Collections.Generic.List[object]
+  for ($sceneIndex = 0; $sceneIndex -lt $scenes.Count; $sceneIndex++) {
+    $scene = $scenes[$sceneIndex]
+    $weightTotal = ($scene.Highlights | ForEach-Object { [double]$_.Weight } | Measure-Object -Sum).Sum
+    foreach ($highlight in $scene.Highlights) {
+      $timelineScenes.Add([PSCustomObject]@{
+        SceneIndex = $sceneIndex
+        SceneNumber = $sceneIndex + 1
+        SceneLabel = $scene.Label
+        Tracker = $scene.Tracker
+        Oval = $highlight.Oval
+        Oval2 = $highlight.Oval2
+        Duration = [Math]::Round(($segmentDurations[$sceneIndex] * [double]$highlight.Weight / $weightTotal), 2)
+      })
     }
   }
 
-  $audio = $presentation.Slides.Item(1).Shapes.AddMediaObject2($audioPath, 0, -1, -100, -100, 1, 1)
-  $audio.Name = "HomeFlow patient journey narration"
+  for ($index = 0; $index -lt $timelineScenes.Count; $index++) {
+    $timelineScene = $timelineScenes[$index]
+    $slide = if ($index -eq 0) { $firstSlide } else { $presentation.Slides.Add($index + 1, 12) }
+    $pictureLeft = 14.0
+    $pictureTop = 12.0
+    $pictureWidth = 932.0
+    $pictureHeight = 516.0
+    Add-CinematicBackdrop -Slide $slide
+    $slide.Shapes.AddPicture($sceneImages[$timelineScene.SceneIndex], 0, -1, $pictureLeft, $pictureTop, $pictureWidth, $pictureHeight) | Out-Null
+    Add-CinematicChrome -Slide $slide -SceneLabel $timelineScene.SceneLabel -SceneNumber $timelineScene.SceneNumber
+    Add-PatientTracker -Slide $slide -TrackerText $timelineScene.Tracker
+    if ($timelineScene.Oval) {
+      $oval = $timelineScene.Oval
+      Add-RedOval -Slide $slide -Left ($pictureLeft + ($oval[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval[1] * $pictureHeight / 540)) -Width ($oval[2] * $pictureWidth / 960) -Height ($oval[3] * $pictureHeight / 540)
+    }
+    if ($timelineScene.Oval2) {
+      $oval2 = $timelineScene.Oval2
+      Add-RedOval -Slide $slide -Left ($pictureLeft + ($oval2[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval2[1] * $pictureHeight / 540)) -Width ($oval2[2] * $pictureWidth / 960) -Height ($oval2[3] * $pictureHeight / 540)
+    }
+    $transition = $slide.SlideShowTransition
+    $transition.AdvanceOnClick = 0
+    $transition.AdvanceOnTime = -1
+    $transition.AdvanceTime = [Math]::Max(2, $timelineScene.Duration)
+  }
+
   $audio.AnimationSettings.Animate = -1
   $audio.AnimationSettings.PlaySettings.PlayOnEntry = -1
   $audio.AnimationSettings.PlaySettings.HideWhileNotPlaying = -1
   $audio.AnimationSettings.PlaySettings.StopAfterSlides = $presentation.Slides.Count
-  $narrationDuration = [Math]::Round($audio.MediaFormat.Length / 1000, 2)
-  $wordCounts = @($narrations | ForEach-Object { ($_ -split '\s+' | Where-Object { $_ }).Count })
-  $totalWords = ($wordCounts | Measure-Object -Sum).Sum
-  $durations = @($wordCounts | ForEach-Object { [Math]::Round(($narrationDuration * $_ / $totalWords), 2) })
-  $durations[$durations.Count - 1] += 1.0
-
-  for ($index = 0; $index -lt $presentation.Slides.Count; $index++) {
-    $transition = $presentation.Slides.Item($index + 1).SlideShowTransition
-    $transition.AdvanceOnClick = 0
-    $transition.AdvanceOnTime = -1
-    $transition.AdvanceTime = [Math]::Max(8, $durations[$index])
-  }
 
   $vtt = New-Object System.Collections.Generic.List[string]
   $vtt.Add("WEBVTT"); $vtt.Add("")
   $cursor = 0.0
   for ($index = 0; $index -lt $captions.Count; $index++) {
-    $start = $cursor; $end = $cursor + $durations[$index]
+    $start = $cursor; $end = $cursor + $segmentDurations[$index]
     $vtt.Add("$($index + 1)"); $vtt.Add("$(Format-VttTime $start) --> $(Format-VttTime $end)"); $vtt.Add($captions[$index]); $vtt.Add("")
     $cursor = $end
   }
@@ -199,6 +355,7 @@ try {
 [PSCustomObject]@{
   video = $videoPath
   captions = $captionsPath
-  durationSeconds = [Math]::Round(($durations | Measure-Object -Sum).Sum, 1)
+  durationSeconds = [Math]::Round(($segmentDurations | Measure-Object -Sum).Sum, 1)
+  highlightScenes = $timelineScenes.Count
   bytes = (Get-Item $videoPath).Length
 } | ConvertTo-Json -Compress
