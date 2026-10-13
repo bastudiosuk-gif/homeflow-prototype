@@ -1,0 +1,21 @@
+{
+  "voice": "en-GB-SoniaNeural",
+  "rate": "+0%",
+  "segments": [
+    {"image": "title", "label": "HomeFlow", "text": "For Margaret, going home today means more than a medical decision. Her medicines, family and continuing care all need to be ready. This is her fictional journey through HomeFlow."},
+    {"image": "01-overview.jpg", "label": "Overview", "text": "Her nurse begins on Overview. Eighteen discharges are expected across three demonstration wards, and six patients are ready. The team can see the day's workload before turning to the person behind one of those numbers."},
+    {"image": "02-ward-board.jpg", "label": "Ward board", "text": "On Ward board, Margaret is in bed twelve, hoping to leave at two. She is amber because her take-home medicines are still with pharmacy. The twelve-thirty target and responsible team sit alongside her expected discharge."},
+    {"image": "03-journey.jpg", "label": "Journey", "text": "Opening Journey makes the next step clear. Pharmacy needs to acknowledge her request, and collection still needs confirmation. Completed steps and remaining dependencies give her nurse a shared plan to work from."},
+    {"image": "04-escalation.jpg", "label": "Escalation", "text": "Margaret's unfinished action is visible with its deadline and owner. If that deadline passes, HomeFlow flags it as overdue. In Escalation, her nurse can ask pharmacy to act, and see whether responsibility has been acknowledged."},
+    {"image": "05-pharmacy-request.jpg", "label": "Pharmacy operations", "text": "The request reaches the separate pharmacy workspace. Pharmacy acknowledges the escalation and moves her medicines through preparation. HomeFlow follows the work; prescribing and clinical checks stay in the approved systems."},
+    {"image": "06-pharmacy-ready.jpg", "label": "Pharmacy operations", "text": "Once her medicines are ready, the stage changes. Delivery to the ward is recorded, so her nurse can see progress without another round of telephone chasing."},
+    {"image": "07-family.jpg", "label": "Family", "text": "Meanwhile, Family helps Margaret's relative plan the afternoon. Her nurse sends one early alert with the likely collection time, explaining that final checks may cause a short delay."},
+    {"image": "08-family-confirmed.jpg", "label": "Family", "text": "Her relative confirms collection. That response becomes part of the same discharge picture, rather than a separate conversation the next nurse has to rediscover."},
+    {"image": "09-handover.jpg", "label": "Handover", "text": "Margaret's diabetes plan has changed during admission. In Handover, the ward chooses the Community Diabetes Team and shares the verified change and follow-up request."},
+    {"image": "10-handover-acknowledged.jpg", "label": "Handover", "text": "An acknowledgement shows that the receiving team has seen it. Her story continues beyond the ward."},
+    {"image": "12-ward-board-ready.jpg", "label": "Ward board", "text": "Now her medicines have arrived and collection is confirmed. Back on Ward board, Margaret is green."},
+    {"image": "14-ward-display.jpg", "label": "Ward display", "text": "The ward display reflects the same progress using her demonstration bed and identifier."},
+    {"image": "15-ward-board-departed.jpg", "label": "Ward board", "text": "When she leaves, the nurse records her departure and she comes off the live board."},
+    {"image": "13-analytics.jpg", "label": "Analytics", "text": "Afterwards, Analytics helps the team understand recurring barriers and evaluate improvements. HomeFlow's aim is simple: less uncertainty for staff, a prepared family, and a better coordinated journey home."}
+  ]
+}
