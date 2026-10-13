@@ -874,3 +874,15 @@ body{
 
 /* Keep the side menu vertically scrollable without showing a horizontal scrollbar. */
 .sidebar nav{overflow-x:hidden}
+
+.homeflow-logout-dialog{margin:auto;width:min(440px,calc(100% - 32px));padding:32px;border:1px solid #d8e7ed;border-radius:24px;background:#fff;color:#093449;box-shadow:0 28px 90px #052f4340}
+.homeflow-logout-dialog::backdrop{background:#062c4666;backdrop-filter:blur(5px)}
+.homeflow-logout-dialog>img{width:180px;height:auto;display:block;margin-bottom:25px}
+.homeflow-logout-dialog h2{font-size:25px;line-height:1.2;margin:0 0 12px;letter-spacing:-.6px}
+.homeflow-logout-dialog p{font-size:15px;line-height:1.6;color:#577080;margin:0 0 26px}
+.logout-dialog-actions{display:flex;gap:12px}
+.logout-dialog-actions button{flex:1;min-height:46px;border-radius:12px;font-size:14px;font-weight:650;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.logout-stay{background:#f0f7fa;border:1px solid #d4e5ec;color:#123f56}
+.logout-confirm{background:linear-gradient(120deg,#007cb0,#008f91);border:1px solid transparent;color:white}
+.logout-dialog-actions button:focus-visible{outline:3px solid #15b8c5;outline-offset:3px}
+@media(max-width:420px){.homeflow-logout-dialog{padding:26px}.logout-dialog-actions{flex-direction:column}.logout-dialog-actions button{flex:none}}

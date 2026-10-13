@@ -495,6 +495,21 @@ function LoginScreen({ code, error, onCodeChange, onSubmit, onWatchVideo }: { co
   </main>;
 }
 
+function LogoutConfirmation({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+    return () => { if (dialog?.open) dialog.close(); };
+  }, []);
+  return <dialog ref={dialogRef} className="homeflow-logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description" onCancel={(event) => { event.preventDefault(); onCancel(); }}>
+    <img src="./homeflow-logo.png" alt="HomeFlow" />
+    <h2 id="logout-title">Log out of HomeFlow?</h2>
+    <p id="logout-description">Are you sure you want to log out? You’ll need to log in again to access HomeFlow.</p>
+    <div className="logout-dialog-actions"><button className="logout-stay" autoFocus onClick={onCancel}>Stay logged in</button><button className="logout-confirm" onClick={onConfirm}><LogOut size={17} /> Log out</button></div>
+  </dialog>;
+}
+
 function OverviewVideo({ onClose }: { onClose: () => void }) {
   return <div className="video-modal-backdrop" role="presentation" onClick={onClose}>
     <section className="video-modal" role="dialog" aria-modal="true" aria-labelledby="homeflow-video-title" onClick={(event) => event.stopPropagation()}>
@@ -571,6 +586,7 @@ async function playWelcomeSound() {
 export default function HomeFlow() {
   const [accessView, setAccessView] = useState<AccessView>(() => typeof window !== "undefined" && window.localStorage.getItem(DEMO_SESSION_KEY) === "active" ? "app" : "login");
   const [showOverviewVideo, setShowOverviewVideo] = useState(false);
+  const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   const [demoAccessCode, setDemoAccessCode] = useState("");
   const [loginError, setLoginError] = useState("");
   const [view, setView] = useState<View>("dashboard");
@@ -827,8 +843,9 @@ export default function HomeFlow() {
     void playWelcomeSound();
     navigate("dashboard");
   }, [demoAccessCode, navigate]);
-  const signOutDemo = useCallback(() => {
-    if (!window.confirm("Are you sure you want to log out of HomeFlow?")) return;
+  const signOutDemo = useCallback(() => { setShowLogoutConfirmation(true); }, []);
+  const completeSignOut = useCallback(() => {
+    setShowLogoutConfirmation(false);
     window.localStorage.removeItem(DEMO_SESSION_KEY);
     setDemoAccessCode("");
     setLoginError("");
@@ -945,6 +962,7 @@ export default function HomeFlow() {
     pilot: <Pilot />,
   };
   const overviewVideo = showOverviewVideo ? <OverviewVideo onClose={() => setShowOverviewVideo(false)} /> : null;
+  const logoutConfirmation = showLogoutConfirmation ? <LogoutConfirmation onCancel={() => setShowLogoutConfirmation(false)} onConfirm={completeSignOut} /> : null;
   if (accessView === "login") return <><LoginScreen code={demoAccessCode} error={loginError} onCodeChange={(code) => { setDemoAccessCode(code); setLoginError(""); }} onSubmit={() => { void enterDemo(); }} onWatchVideo={() => setShowOverviewVideo(true)} />{overviewVideo}</>;
   if (accessView === "welcome") return <WelcomeScreen />;
   if (wardDisplay) return <WardDisplay patients={patients} updatedAt={updatedAt} onExit={exitWardDisplay} />;
@@ -956,6 +974,7 @@ export default function HomeFlow() {
     {!pharmacyWorkspace && <div className="mobile-nav">{wardNavItems.filter((item) => ["dashboard", "board", "community", "family"].includes(item.id)).map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /><span>{item.short}</span></button>; })}<button className={mobileMenuOpen || !["dashboard", "board", "community", "family"].includes(view) ? "active" : ""} onClick={() => setMobileMenuOpen(true)} aria-haspopup="dialog" aria-expanded={mobileMenuOpen}><Menu size={18} /><span>More</span></button></div>}
     {mobileMenuOpen && !pharmacyWorkspace ? <div className="mobile-menu-backdrop" role="presentation" onClick={() => setMobileMenuOpen(false)}><section className="mobile-menu-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" onClick={(event) => event.stopPropagation()}><header><div><span>HomeFlow</span><h2 id="mobile-menu-title">All ward tools</h2></div><button onClick={() => setMobileMenuOpen(false)} aria-label="Close all ward tools"><X size={21} /></button></header><nav aria-label="All mobile ward tools">{wardNavItems.map((item) => { const Icon = item.icon; return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><span className="mobile-menu-icon"><Icon size={20} /></span><span><strong>{item.short}</strong><small>{item.label}</small></span>{view === item.id ? <CheckCircle2 size={18} /> : <ChevronRight size={18} />}</button>; })}</nav><p><ShieldCheck size={15} /> Ward tools only · demonstration data</p></section></div> : null}
     {overviewVideo}
+    {logoutConfirmation}
     {toast && <div className="toast" role="status"><CheckCircle2 size={19} /><span>{toast}</span><button onClick={() => setToast(null)} aria-label="Dismiss"><X size={16} /></button></div>}
   </div>;
 }
