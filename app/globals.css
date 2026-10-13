@@ -874,6 +874,7 @@ body{
 
 /* Keep the side menu vertically scrollable without showing a horizontal scrollbar. */
 .sidebar nav{overflow-x:hidden}
+.login-unified-header .access-kicker{text-transform:none;letter-spacing:.06em}
 
 /* Decorative corridor imagery stays behind the controls, not in patient views. */
 .login-screen{isolation:isolate}
