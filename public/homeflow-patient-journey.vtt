@@ -1,25 +1,117 @@
 WEBVTT
 
 1
-00:00:00.000 --> 00:00:13.660
-Meet Margaret T., fictional demo patient DEMO-101.
+00:00:00.000 --> 00:00:05.430
+This is HomeFlow. Follow one fictional patient's discharge journey.
 
 2
-00:00:13.660 --> 00:00:30.630
-The ward board shows her status, barrier, owner, target and family readiness.
+00:00:05.430 --> 00:00:11.076
+Margaret T., demo identifier one-zero-one, is expected to leave today.
 
 3
-00:00:30.630 --> 00:00:48.840
-Her journey shows what will unlock discharge and the timestamped next step.
+00:00:11.076 --> 00:00:13.770
+Start with the shared ward board.
 
 4
-00:00:48.840 --> 00:01:07.050
-An overdue TTO can be escalated to the responsible team and tracked to completion.
+00:00:13.770 --> 00:00:17.880
+Here is Margaret, in ward three, bed twelve.
 
 5
-00:01:07.050 --> 00:01:27.330
-One family update supports collection, support requests and contact requests.
+00:00:17.880 --> 00:00:21.509
+Her expected discharge is today at two o'clock.
 
 6
-00:01:27.330 --> 00:01:49.020
-The privacy-safe ward display uses DEMO-101 instead of Margaret's full name.
+00:00:21.509 --> 00:00:23.819
+Her status is amber.
+
+7
+00:00:23.819 --> 00:00:27.690
+TTO medication is the outstanding barrier.
+
+8
+00:00:27.690 --> 00:00:31.752
+The responsible team and eleven o'clock target appear here.
+
+9
+00:00:31.752 --> 00:00:35.286
+It also shows that her family is ready to collect.
+
+10
+00:00:35.286 --> 00:00:37.980
+Open Margaret's patient journey.
+
+11
+00:00:37.980 --> 00:00:42.066
+The main barrier answers: what will unlock this discharge?
+
+12
+00:00:42.066 --> 00:00:45.240
+Pharmacy completion is due at eleven.
+
+13
+00:00:45.240 --> 00:00:49.446
+The timeline shows completed actions and their timestamps.
+
+14
+00:00:49.446 --> 00:00:52.428
+Here are the owner and completion action.
+
+15
+00:00:52.428 --> 00:00:56.394
+The deadline monitor flags thirty-five minutes overdue.
+
+16
+00:00:56.394 --> 00:00:59.592
+This is Margaret's TTO barrier.
+
+17
+00:00:59.592 --> 00:01:02.982
+The responsible teams and target appear together.
+
+18
+00:01:02.982 --> 00:01:07.212
+The patient impact is clear: discharge cannot complete.
+
+19
+00:01:07.212 --> 00:01:10.482
+The suggested next action guides staff.
+
+20
+00:01:10.482 --> 00:01:14.039
+Escalate here, then mark the barrier complete.
+
+21
+00:01:14.039 --> 00:01:17.910
+The family view shows whether a response is still needed.
+
+22
+00:01:17.910 --> 00:01:21.851
+The preparation message helps the relative plan for collection.
+
+23
+00:01:21.851 --> 00:01:25.817
+A ready-for-collection message is shown as the next stage.
+
+24
+00:01:25.817 --> 00:01:30.959
+The relative can confirm collection, request support or ask for contact.
+
+25
+00:01:30.959 --> 00:01:36.581
+The privacy-safe display uses bed D-twelve, demo identifier one-zero-one.
+
+26
+00:01:36.581 --> 00:01:41.123
+The same TTO barrier and responsible team remain visible.
+
+27
+00:01:41.123 --> 00:01:44.129
+The target completion time is eleven.
+
+28
+00:01:44.129 --> 00:01:47.519
+Family readiness is visible alongside it.
+
+29
+00:01:47.519 --> 00:01:54.893
+Prototype updates appear on this display. HomeFlow: one patient journey, one shared picture.

@@ -90,11 +90,6 @@ function Add-ZoomFocus {
   $cardEntrance.Timing.Duration = 0.55
   $effect = $Slide.TimeLine.MainSequence.AddEffect($detail, 23, 0, 2)
   $effect.Timing.Duration = 0.55
-  $glowPulse = $Slide.TimeLine.MainSequence.AddEffect($card, 59, 0, 2)
-  $glowPulse.Timing.TriggerDelayTime = 0.55
-  $glowPulse.Timing.Duration = 0.7
-  $glowPulse.Timing.AutoReverse = -1
-  $glowPulse.Timing.RepeatDuration = $script:focusDuration
 }
 
 function Add-CinematicBackdrop {
@@ -220,6 +215,40 @@ $scenes = @(
   ) }
 )
 
+# Every spoken cue has its own audio clip on its own visual frame.
+# PowerPoint measures the actual clip length; no word-count estimates are used.
+$cueTexts = @(
+  "This is HomeFlow. Follow one fictional patient's discharge journey.",
+  "Margaret T., demo identifier one-zero-one, is expected to leave today.",
+  "Start with the shared ward board.",
+  "Here is Margaret, in ward three, bed twelve.",
+  "Her expected discharge is today at two o'clock.",
+  "Her status is amber.",
+  "TTO medication is the outstanding barrier.",
+  "The responsible team and eleven o'clock target appear here.",
+  "It also shows that her family is ready to collect.",
+  "Open Margaret's patient journey.",
+  "The main barrier answers: what will unlock this discharge?",
+  "Pharmacy completion is due at eleven.",
+  "The timeline shows completed actions and their timestamps.",
+  "Here are the owner and completion action.",
+  "The deadline monitor flags thirty-five minutes overdue.",
+  "This is Margaret's TTO barrier.",
+  "The responsible teams and target appear together.",
+  "The patient impact is clear: discharge cannot complete.",
+  "The suggested next action guides staff.",
+  "Escalate here, then mark the barrier complete.",
+  "The family view shows whether a response is still needed.",
+  "The preparation message helps the relative plan for collection.",
+  "A ready-for-collection message is shown as the next stage.",
+  "The relative can confirm collection, request support or ask for contact.",
+  "The privacy-safe display uses bed D-twelve, demo identifier one-zero-one.",
+  "The same TTO barrier and responsible team remain visible.",
+  "The target completion time is eleven.",
+  "Family readiness is visible alongside it.",
+  "Prototype updates appear on this display. HomeFlow: one patient journey, one shared picture."
+)
+
 $root = (Resolve-Path ".").Path
 $bundledPython = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 if ($PythonExecutable -eq "python" -and (Test-Path $bundledPython)) { $PythonExecutable = $bundledPython }
@@ -243,18 +272,10 @@ $edgeTtsModulePath = Join-Path $root ".codex-tmp\pydeps"
 if (-not (Test-Path (Join-Path $edgeTtsModulePath "edge_tts"))) { throw "edge-tts is not installed." }
 $previousPythonPath = $env:PYTHONPATH
 $env:PYTHONPATH = $edgeTtsModulePath
-$audioPath = Join-Path $workDir "homeflow-patient-narration.mp3"
-$fullNarration = $narrations -join " ... "
-$narrationCreated = $ReuseNarration -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0
-if (-not $narrationCreated) {
-  if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
-  for ($attempt = 1; $attempt -le 3; $attempt++) {
-    & $PythonExecutable -m edge_tts --voice $NarrationVoice --rate=+4% --pitch=-4Hz --text $fullNarration --write-media $audioPath
-    if ($LASTEXITCODE -eq 0 -and (Test-Path $audioPath) -and (Get-Item $audioPath).Length -gt 0) { $narrationCreated = $true; break }
-    if (Test-Path $audioPath) { Remove-Item -LiteralPath $audioPath -Force }
-    Start-Sleep -Seconds (3 * $attempt)
-  }
-}
+$cueManifest = Join-Path $workDir "narration-cues.json"
+[System.IO.File]::WriteAllText($cueManifest, (ConvertTo-Json -InputObject $cueTexts), [System.Text.UTF8Encoding]::new($false))
+& $PythonExecutable (Join-Path $root "scripts\create-timed-narration.py") $cueManifest
+$narrationCreated = $LASTEXITCODE -eq 0
 $env:PYTHONPATH = $previousPythonPath
 if (-not $narrationCreated) { throw "Patient-journey narration failed after three attempts." }
 
@@ -264,15 +285,6 @@ try {
   $presentation = $powerPoint.Presentations.Add()
   $presentation.PageSetup.SlideWidth = 960
   $presentation.PageSetup.SlideHeight = 540
-
-  $firstSlide = $presentation.Slides.Add(1, 12)
-  $audio = $firstSlide.Shapes.AddMediaObject2($audioPath, 0, -1, -100, -100, 1, 1)
-  $audio.Name = "HomeFlow patient journey narration"
-  $narrationDuration = [Math]::Round($audio.MediaFormat.Length / 1000, 2)
-  $wordCounts = @($narrations | ForEach-Object { ($_ -split '\s+' | Where-Object { $_ }).Count })
-  $totalWords = ($wordCounts | Measure-Object -Sum).Sum
-  $segmentDurations = @($wordCounts | ForEach-Object { [Math]::Round(($narrationDuration * $_ / $totalWords), 2) })
-  $segmentDurations[$segmentDurations.Count - 1] += 1.0
 
   $timelineScenes = New-Object System.Collections.Generic.List[object]
   for ($sceneIndex = 0; $sceneIndex -lt $scenes.Count; $sceneIndex++) {
@@ -286,14 +298,25 @@ try {
         Tracker = $scene.Tracker
         Oval = $highlight.Oval
         Oval2 = $highlight.Oval2
-        Duration = [Math]::Round(($segmentDurations[$sceneIndex] * [double]$highlight.Weight / $weightTotal), 2)
+        Duration = 0.0
       })
     }
   }
+  if ($timelineScenes.Count -ne $cueTexts.Count) { throw "Narration and visual cue counts differ." }
+  $vtt = New-Object System.Collections.Generic.List[string]
+  $vtt.Add("WEBVTT"); $vtt.Add("")
+  $cursor = 0.0
 
   for ($index = 0; $index -lt $timelineScenes.Count; $index++) {
     $timelineScene = $timelineScenes[$index]
-    $slide = if ($index -eq 0) { $firstSlide } else { $presentation.Slides.Add($index + 1, 12) }
+    $slide = $presentation.Slides.Add($index + 1, 12)
+    $clipPath = Join-Path $workDir ("cue-{0:00}.mp3" -f ($index + 1))
+    $audio = $slide.Shapes.AddMediaObject2($clipPath, 0, -1, -100, -100, 1, 1)
+    $audio.AnimationSettings.Animate = -1
+    $audio.AnimationSettings.PlaySettings.PlayOnEntry = -1
+    $audio.AnimationSettings.PlaySettings.HideWhileNotPlaying = -1
+    $audio.AnimationSettings.PlaySettings.StopAfterSlides = 1
+    $timelineScene.Duration = [Math]::Round($audio.MediaFormat.Length / 1000, 3) + 0.15
     $pictureLeft = 14.0
     $pictureTop = 12.0
     $pictureWidth = 932.0
@@ -315,22 +338,14 @@ try {
     $transition = $slide.SlideShowTransition
     $transition.AdvanceOnClick = 0
     $transition.AdvanceOnTime = -1
-    $transition.AdvanceTime = [Math]::Max(2, $timelineScene.Duration)
-  }
-
-  $audio.AnimationSettings.Animate = -1
-  $audio.AnimationSettings.PlaySettings.PlayOnEntry = -1
-  $audio.AnimationSettings.PlaySettings.HideWhileNotPlaying = -1
-  $audio.AnimationSettings.PlaySettings.StopAfterSlides = $presentation.Slides.Count
-
-  $vtt = New-Object System.Collections.Generic.List[string]
-  $vtt.Add("WEBVTT"); $vtt.Add("")
-  $cursor = 0.0
-  for ($index = 0; $index -lt $captions.Count; $index++) {
-    $start = $cursor; $end = $cursor + $segmentDurations[$index]
-    $vtt.Add("$($index + 1)"); $vtt.Add("$(Format-VttTime $start) --> $(Format-VttTime $end)"); $vtt.Add($captions[$index]); $vtt.Add("")
+    $transition.AdvanceTime = $timelineScene.Duration
+    $end = $cursor + $timelineScene.Duration
+    $vtt.Add("$($index + 1)")
+    $vtt.Add("$(Format-VttTime $cursor) --> $(Format-VttTime $end)")
+    $vtt.Add($cueTexts[$index]); $vtt.Add("")
     $cursor = $end
   }
+  $vtt.RemoveAt($vtt.Count - 1)
   [System.IO.File]::WriteAllLines($captionsPath, $vtt, [System.Text.UTF8Encoding]::new($false))
 
   if (Test-Path $timedDeckPath) { Remove-Item -LiteralPath $timedDeckPath -Force }
@@ -356,7 +371,7 @@ try {
 [PSCustomObject]@{
   video = $videoPath
   captions = $captionsPath
-  durationSeconds = [Math]::Round(($segmentDurations | Measure-Object -Sum).Sum, 1)
+  durationSeconds = [Math]::Round($cursor, 1)
   highlightScenes = $timelineScenes.Count
   bytes = (Get-Item $videoPath).Length
 } | ConvertTo-Json -Compress

@@ -487,7 +487,7 @@ function LoginScreen({ code, error, onCodeChange, onSubmit, onWatchVideo }: { co
         <label className="access-field"><span>Password</span><div><input type="password" value={code} onChange={(event) => onCodeChange(event.target.value)} autoComplete="off" aria-describedby="demo-password-help" /><LockKeyhole size={17} /></div><small id="demo-password-help">Enter the password supplied by the HomeFlow owner.</small></label>
         {error && <p className="login-error" role="alert"><AlertTriangle size={16} /> {error}</p>}
         <button className="access-primary login-submit" type="submit"><LogIn size={19} /> Sign in to HomeFlow <ArrowRight size={18} /></button>
-        <button className="login-video-button" type="button" onClick={onWatchVideo}><Play size={18} /><span><strong>Follow one HomeFlow patient journey</strong><small>1 minute 49 seconds · Fictional demonstration patient</small></span><ChevronRight size={18} /></button>
+        <button className="login-video-button" type="button" onClick={onWatchVideo}><Play size={18} /><span><strong>Follow one HomeFlow patient journey</strong><small>A short guided walkthrough · Fictional demonstration patient</small></span><ChevronRight size={18} /></button>
         <div className="login-assurance"><ShieldCheck size={17} /><div><strong>Safe demonstration environment</strong><span>Fictional patients only · No live Trust connections</span></div></div>
       </form>
     </section>
@@ -503,8 +503,8 @@ function OverviewVideo({ onClose }: { onClose: () => void }) {
         <button onClick={onClose} aria-label="Close HomeFlow overview video"><X size={22} /></button>
       </header>
       <video controls autoPlay playsInline preload="metadata">
-        <source src="./homeflow-patient-journey.mp4?v=animated-illumination" type="video/mp4" />
-        <track kind="captions" src="./homeflow-patient-journey.vtt" srcLang="en" label="English" default />
+        <source src="./homeflow-patient-journey.mp4?v=synced-steady-glow" type="video/mp4" />
+        <track kind="captions" src="./homeflow-patient-journey.vtt?v=synced-steady-glow" srcLang="en" label="English" default />
         Your browser does not support embedded video.
       </video>
       <footer><ShieldCheck size={16} /><span>Prototype / Demonstration Data Only · All patients and identifiers shown are fictional.</span></footer>
