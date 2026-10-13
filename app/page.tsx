@@ -828,6 +828,7 @@ export default function HomeFlow() {
     navigate("dashboard");
   }, [demoAccessCode, navigate]);
   const signOutDemo = useCallback(() => {
+    if (!window.confirm("Are you sure you want to log out of HomeFlow?")) return;
     window.localStorage.removeItem(DEMO_SESSION_KEY);
     setDemoAccessCode("");
     setLoginError("");
