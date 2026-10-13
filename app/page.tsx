@@ -503,7 +503,7 @@ function OverviewVideo({ onClose }: { onClose: () => void }) {
         <button onClick={onClose} aria-label="Close HomeFlow overview video"><X size={22} /></button>
       </header>
       <video controls autoPlay playsInline preload="metadata">
-        <source src="./homeflow-live-journey.mp4?v=live-story-20261013" type="video/mp4" />
+        <source src="./homeflow-focused-journey.mp4?v=spoken-focus-20261013" type="video/mp4" />
         <track kind="captions" src="./homeflow-live-journey.vtt?v=live-story-20261013" srcLang="en" label="English" default />
         Your browser does not support embedded video.
       </video>

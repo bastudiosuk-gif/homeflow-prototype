@@ -38,8 +38,10 @@ Use **Reset demo** at any time to restore the starting state.
 
 ## Live patient-journey film
 
-The Overview player uses `public/homeflow-live-journey.mp4` and its English captions. The film is 2:30, 1920×1080 at 30 fps. Application scenes are edited from actual Chrome footage recorded with Windows Snipping Tool, not still screenshots. The story follows fictional Margaret T. through Overview, Ward board, Journey, Escalation, Pharmacy operations, Family and Handover.
+The Overview player uses `public/homeflow-focused-journey.mp4` and the English captions from `public/homeflow-live-journey.vtt`. The film is 2:30, 1920×1080 at 30 fps. Application scenes are edited from actual Chrome footage recorded with Windows Snipping Tool, not still screenshots. The story follows fictional Margaret T. through Overview, Ward board, Journey, Escalation, Pharmacy operations, Family and Handover.
 
 The female narration is synthetic (`en-GB-SoniaNeural`), not a human voice recording. All patient details and interactions are demonstration-only; no live clinical integration or messaging is implied.
+
+`scripts/add-homeflow-narration-focus.py` adds smooth camera moves and word-timed steady highlights to the original live film. It does not replace the voice. A human voice recording remains outstanding for the final presentation.
 
 `scripts/render-homeflow-live-film.py` uses reviewed source timecodes and measured speech boundaries. It needs `imageio-ffmpeg`, the authored script in `scripts/homeflow-story.json`, and local production inputs under `.codex-tmp/homeflow-story/`: `live-take-01.mp4`, `narration.mp3`, `speech.json` and `edit-audit.json`. Those raw inputs are intentionally excluded from Git; the unedited desktop capture must never be published. Only the reviewed final film and captions are public. `--captions-only` rebuilds captions after the film has been rendered.
