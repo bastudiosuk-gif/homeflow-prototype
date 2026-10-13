@@ -24,9 +24,13 @@ function Export-ScreenCrop {
   Add-Type -AssemblyName System.Drawing
   $sourceBitmap = [System.Drawing.Bitmap]::new($Source)
   try {
-    $rectangle = [System.Drawing.Rectangle]::new(0, $Top, 1440, 810)
+    $cropHeight = [int]($sourceBitmap.Width * 810 / 1440)
+    $rectangle = [System.Drawing.Rectangle]::new(0, $Top, $sourceBitmap.Width, $cropHeight)
     $crop = $sourceBitmap.Clone($rectangle, $sourceBitmap.PixelFormat)
-    try { $crop.Save($Destination, [System.Drawing.Imaging.ImageFormat]::Png) }
+    try {
+      $resized = [System.Drawing.Bitmap]::new($crop, 1440, 810)
+      try { $resized.Save($Destination, [System.Drawing.Imaging.ImageFormat]::Png) } finally { $resized.Dispose() }
+    }
     finally { $crop.Dispose() }
   } finally { $sourceBitmap.Dispose() }
 }
@@ -115,8 +119,10 @@ function Add-CinematicBackdrop {
 }
 
 function Add-CinematicChrome {
-  param($Slide, [string]$SceneLabel, [int]$SceneNumber)
-  $scenePill = $Slide.Shapes.AddShape(5, 24, 18, 184, 28)
+  param($Slide, [string]$SceneLabel, [int]$SceneNumber, [bool]$IntroducePage = $false)
+  $labelWidth = if ($IntroducePage) { 280 } else { 184 }
+  $labelHeight = if ($IntroducePage) { 42 } else { 28 }
+  $scenePill = $Slide.Shapes.AddShape(5, 24, 18, $labelWidth, $labelHeight)
   $scenePill.Fill.Solid()
   $scenePill.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 4 52 74
   $scenePill.Fill.Transparency = 0.06
@@ -124,11 +130,18 @@ function Add-CinematicChrome {
   $scenePill.Line.Weight = 1.5
   $scenePill.TextFrame.TextRange.Text = ("0{0}  •  {1}" -f $SceneNumber, $SceneLabel.ToUpperInvariant())
   $scenePill.TextFrame.TextRange.Font.Name = "Aptos"
-  $scenePill.TextFrame.TextRange.Font.Size = 9
+  $scenePill.TextFrame.TextRange.Font.Size = if ($IntroducePage) { 16 } else { 9 }
   $scenePill.TextFrame.TextRange.Font.Bold = -1
   $scenePill.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
   $scenePill.TextFrame.VerticalAnchor = 3
   $scenePill.TextFrame.MarginLeft = 10
+  if ($IntroducePage) {
+    $scenePill.Glow.Color.RGB = ConvertTo-OfficeRgb 45 212 191
+    $scenePill.Glow.Radius = 12
+    $scenePill.Glow.Transparency = 0.3
+    $titleEntrance = $Slide.TimeLine.MainSequence.AddEffect($scenePill, 23, 0, 2)
+    $titleEntrance.Timing.Duration = 0.55
+  }
 
   $demoPill = $Slide.Shapes.AddShape(5, 758, 506, 178, 20)
   $demoPill.Fill.Solid()
@@ -144,7 +157,7 @@ function Add-CinematicChrome {
   $demoPill.TextFrame.TextRange.ParagraphFormat.Alignment = 2
   $demoPill.TextFrame.VerticalAnchor = 3
 
-  for ($dotIndex = 1; $dotIndex -le 6; $dotIndex++) {
+  for ($dotIndex = 1; $dotIndex -le $scenes.Count; $dotIndex++) {
     $dot = $Slide.Shapes.AddShape(9, 26 + (($dotIndex - 1) * 15), 509, 8, 8)
     $dot.Line.Visible = 0
     $dot.Fill.Solid()
@@ -173,80 +186,76 @@ $captions = @(
 
 $scenes = @(
   @{ File = "01-executive-dashboard.png"; Top = 100; Label = "Overview"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Weight = 0.58; Oval = @(180, 28, 410, 62) },
+    @{ Intro = $true; Oval = $null },
     @{ Weight = 0.42; Oval = @(179, 208, 121, 96) }
   ) },
   @{ File = "02-ward-discharge-board.png"; Top = 210; Label = "Ward board"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Weight = 0.18; Oval = @(178, 154, 166, 30) },
-    @{ Weight = 0.14; Oval = @(174, 220, 110, 34) },
-    @{ Weight = 0.14; Oval = @(282, 218, 96, 48) },
-    @{ Weight = 0.12; Oval = @(390, 220, 70, 38) },
-    @{ Weight = 0.14; Oval = @(458, 218, 104, 42) },
-    @{ Weight = 0.15; Oval = @(555, 216, 96, 48) },
-    @{ Weight = 0.13; Oval = @(643, 216, 122, 48) }
+    @{ Intro = $true; Oval = $null },
+    @{ Oval = @(174, 216, 205, 48) },
+    @{ Oval = @(390, 216, 172, 48) },
+    @{ Oval = @(555, 216, 210, 48) }
   ) },
   @{ File = "03-patient-discharge-journey.png"; Top = 170; Label = "Patient journey"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Weight = 0.15; Oval = @(744, 306, 165, 52) },
+    @{ Intro = $true; Oval = $null },
     @{ Weight = 0.22; Oval = @(178, 170, 758, 80) },
-    @{ Weight = 0.20; Oval = @(195, 397, 522, 48) },
-    @{ Weight = 0.23; Oval = @(194, 315, 524, 82) },
-    @{ Weight = 0.20; Oval = @(195, 397, 522, 48) }
+    @{ Oval = @(194, 315, 524, 128) }
   ) },
   @{ File = "05-barrier-escalation.png"; Top = 190; Label = "Escalation"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Intro = $true; Oval = $null },
     @{ Weight = 0.19; Oval = @(178, 147, 758, 84) },
-    @{ Weight = 0.17; Oval = @(192, 260, 260, 44) },
     @{ Weight = 0.18; Oval = @(193, 313, 234, 48); Oval2 = @(435, 313, 240, 48) },
-    @{ Weight = 0.15; Oval = @(435, 355, 240, 44) },
-    @{ Weight = 0.18; Oval = @(192, 405, 483, 50) },
     @{ Weight = 0.13; Oval = @(191, 460, 260, 42) }
   ) },
   @{ File = "04-family-communication.png"; Top = 210; Label = "Family update"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
-    @{ Weight = 0.20; Oval = @(438, 166, 497, 90) },
-    @{ Weight = 0.30; Oval = @(205, 315, 190, 54) },
-    @{ Weight = 0.20; Oval = @(205, 397, 190, 58) },
+    @{ Intro = $true; Oval = $null },
+    @{ Oval = @(205, 315, 190, 140) },
     @{ Weight = 0.30; Oval = @(451, 346, 334, 42) }
   ) },
   @{ File = "06-ward-display.png"; Top = 100; Label = "Ward display"; Tracker = "Bed D-12 · DEMO-101"; Highlights = @(
+    @{ Intro = $true; Oval = $null },
     @{ Weight = 0.22; Oval = @(36, 260, 170, 70) },
-    @{ Weight = 0.21; Oval = @(416, 260, 228, 70) },
-    @{ Weight = 0.18; Oval = @(638, 260, 104, 70) },
-    @{ Weight = 0.19; Oval = @(742, 260, 192, 70) },
     @{ Weight = 0.20; Oval = @(35, 258, 900, 74) }
+  ) },
+  @{ File = "05-barrier-escalation.png"; Top = 190; Label = "Spot & act"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Intro = $true; Oval = $null },
+    @{ Oval = @(191, 460, 260, 42) }
+  ) },
+  @{ File = "11-pharmacy-workspace.jpg"; Top = 535; Label = "Pharmacy"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Intro = $true; Oval = $null },
+    @{ Oval = @(45, 120, 850, 150) }
+  ) },
+  @{ File = "12-pharmacy-progress.jpg"; Top = 535; Label = "Pharmacy progress"; Tracker = "Margaret T. · DEMO-101"; Highlights = @(
+    @{ Oval = @(580, 370, 320, 70) }
   ) }
 )
 
 # Every spoken cue has its own audio clip on its own visual frame.
 # PowerPoint measures the actual clip length; no word-count estimates are used.
 $cueTexts = @(
-  "This is HomeFlow. Follow one fictional patient's discharge journey.",
-  "Margaret T., demo identifier one-zero-one, is expected to leave today.",
-  "Start with the shared ward board.",
-  "Here is Margaret, in ward three, bed twelve.",
-  "Her expected discharge is today at two o'clock.",
-  "Her status is amber.",
-  "TTO medication is the outstanding barrier.",
-  "The responsible team and eleven o'clock target appear here.",
-  "It also shows that her family is ready to collect.",
-  "Open Margaret's patient journey.",
-  "The main barrier answers: what will unlock this discharge?",
-  "Pharmacy completion is due at eleven.",
-  "The timeline shows completed actions and their timestamps.",
-  "Here are the owner and completion action.",
-  "The deadline monitor flags thirty-five minutes overdue.",
-  "This is Margaret's TTO barrier.",
-  "The responsible teams and target appear together.",
-  "The patient impact is clear: discharge cannot complete.",
-  "The suggested next action guides staff.",
-  "Escalate here, then mark the barrier complete.",
-  "The family view shows whether a response is still needed.",
-  "The preparation message helps the relative plan for collection.",
-  "A ready-for-collection message is shown as the next stage.",
-  "The relative can confirm collection, request support or ask for contact.",
-  "The privacy-safe display uses bed D-twelve, demo identifier one-zero-one.",
-  "The same TTO barrier and responsible team remain visible.",
-  "The target completion time is eleven.",
-  "Family readiness is visible alongside it.",
-  "Prototype updates appear on this display. HomeFlow: one patient journey, one shared picture."
+  "Welcome to HomeFlow. The overview summarises discharge readiness across the ward.",
+  "Follow fictional patient Margaret T., expected home today.",
+  "The ward board shows each patient's status, barriers and ownership.",
+  "Margaret, bed twelve, is expected home at two o'clock.",
+  "She is amber because TTO medication is outstanding.",
+  "Her owner, eleven o'clock target and family readiness appear here.",
+  "Patient journey shows discharge steps, deadlines and progress.",
+  "Margaret needs pharmacy completion by eleven to unlock discharge.",
+  "The timeline shows completed actions, timestamps and the next owner.",
+  "Escalation shows overdue barriers, responsible teams and next actions.",
+  "Margaret's deadline is thirty-five minutes overdue.",
+  "Her responsible teams and target appear together.",
+  "Escalate here, then record completion.",
+  "Family communication supports collection planning and family responses.",
+  "Margaret's relative prepares for collection, then receives the ready message.",
+  "Her relative can confirm, request support or contact.",
+  "Ward display gives staff a shared, privacy-safe discharge picture.",
+  "Margaret appears as bed D-twelve, demo one-zero-one.",
+  "Her barrier, owner, target and family readiness update with the prototype.",
+  "HomeFlow compares incomplete actions with deadlines. Margaret's TTO triggers an overdue flag.",
+  "Staff escalate and record completion directly. People resolve the delay.",
+  "The pharmacy workspace tracks TTO requests, preparation, readiness and ward delivery.",
+  "Margaret's TTO has a revised twelve-thirty target. Prescribing stays in approved systems.",
+  "Her stage is now received by pharmacy. Staff can prepare or request clarification; nurses see progress."
 )
 
 $root = (Resolve-Path ".").Path
@@ -295,6 +304,7 @@ try {
         SceneIndex = $sceneIndex
         SceneNumber = $sceneIndex + 1
         SceneLabel = $scene.Label
+        IntroducePage = [bool]$highlight.Intro
         Tracker = $scene.Tracker
         Oval = $highlight.Oval
         Oval2 = $highlight.Oval2
@@ -323,7 +333,7 @@ try {
     $pictureHeight = 516.0
     Add-CinematicBackdrop -Slide $slide
     $slide.Shapes.AddPicture($sceneImages[$timelineScene.SceneIndex], 0, -1, $pictureLeft, $pictureTop, $pictureWidth, $pictureHeight) | Out-Null
-    Add-CinematicChrome -Slide $slide -SceneLabel $timelineScene.SceneLabel -SceneNumber $timelineScene.SceneNumber
+    Add-CinematicChrome -Slide $slide -SceneLabel $timelineScene.SceneLabel -SceneNumber $timelineScene.SceneNumber -IntroducePage $timelineScene.IntroducePage
     Add-PatientTracker -Slide $slide -TrackerText $timelineScene.Tracker
     $script:focusSource = $sceneImages[$timelineScene.SceneIndex]
     $script:focusDuration = $timelineScene.Duration
