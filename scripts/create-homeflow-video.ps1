@@ -41,11 +41,11 @@ function Add-PatientTracker {
   $trackerLabel.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 190 18 60
   $trackerLabel.TextFrame.TextRange.ParagraphFormat.Alignment = 2
 
-  $trackerOval = $Slide.Shapes.AddShape(9, 708, 25, 220, 42)
+  $trackerOval = $Slide.Shapes.AddShape(5, 708, 25, 220, 42)
   $trackerOval.Fill.Solid()
   $trackerOval.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
   $trackerOval.Fill.Transparency = 0.08
-  $trackerOval.Line.ForeColor.RGB = ConvertTo-OfficeRgb 225 29 72
+  $trackerOval.Line.ForeColor.RGB = ConvertTo-OfficeRgb 13 148 136
   $trackerOval.Line.Weight = 4
   $trackerOval.TextFrame.TextRange.Text = $TrackerText
   $trackerOval.TextFrame.TextRange.Font.Name = "Aptos"
@@ -56,46 +56,38 @@ function Add-PatientTracker {
   $trackerOval.TextFrame.VerticalAnchor = 3
 }
 
-function Add-RedOval {
+function Add-ZoomFocus {
   param($Slide, [double]$Left, [double]$Top, [double]$Width, [double]$Height)
-
-  $halo = $Slide.Shapes.AddShape(9, $Left - 5, $Top - 5, $Width + 10, $Height + 10)
-  $halo.Fill.Solid()
-  $halo.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 228 237
-  $halo.Fill.Visible = 0
-  $halo.Line.ForeColor.RGB = ConvertTo-OfficeRgb 251 113 133
-  $halo.Line.Transparency = 0.28
-  $halo.Line.Weight = 2.5
+  $bitmap = [System.Drawing.Bitmap]::new($script:focusSource)
   try {
-    $halo.Glow.Color.RGB = ConvertTo-OfficeRgb 244 63 94
-    $halo.Glow.Radius = 10
-    $halo.Glow.Transparency = 0.42
-  } catch {}
-
-  $oval = $Slide.Shapes.AddShape(9, $Left, $Top, $Width, $Height)
-  $oval.Fill.Solid()
-  $oval.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
-  $oval.Fill.Visible = 0
-  $oval.Line.ForeColor.RGB = ConvertTo-OfficeRgb 225 29 72
-  $oval.Line.Weight = 4
-
-  $focusPill = $Slide.Shapes.AddShape(5, $Left + 10, [Math]::Max(5, $Top - 13), 58, 17)
-  $focusPill.Fill.Solid()
-  $focusPill.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 190 18 60
-  $focusPill.Line.Visible = 0
-  $focusPill.TextFrame.TextRange.Text = "IN FOCUS"
-  $focusPill.TextFrame.TextRange.Font.Name = "Aptos"
-  $focusPill.TextFrame.TextRange.Font.Size = 7
-  $focusPill.TextFrame.TextRange.Font.Bold = -1
-  $focusPill.TextFrame.TextRange.Font.Color.RGB = ConvertTo-OfficeRgb 255 255 255
-  $focusPill.TextFrame.TextRange.ParagraphFormat.Alignment = 2
-  $focusPill.TextFrame.VerticalAnchor = 3
-
-  $focusDot = $Slide.Shapes.AddShape(9, $Left + 2, [Math]::Max(8, $Top - 8), 10, 10)
-  $focusDot.Fill.Solid()
-  $focusDot.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 251 113 133
-  $focusDot.Line.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
-  $focusDot.Line.Weight = 1.5
+    $x = [Math]::Max(0, [int](($Left - 14) * 1440 / 932))
+    $y = [Math]::Max(0, [int](($Top - 12) * 810 / 516))
+    $w = [Math]::Min($bitmap.Width - $x, [int]($Width * 1440 / 932))
+    $h = [Math]::Min($bitmap.Height - $y, [int]($Height * 810 / 516))
+    $crop = $bitmap.Clone([System.Drawing.Rectangle]::new($x, $y, $w, $h), $bitmap.PixelFormat)
+    $detailPath = Join-Path $workDir ("focus-" + [Guid]::NewGuid().ToString('N') + '.png')
+    try { $crop.Save($detailPath, [System.Drawing.Imaging.ImageFormat]::Png) } finally { $crop.Dispose() }
+  } finally { $bitmap.Dispose() }
+  $zoom = [Math]::Min(1.65, 880 / $Width)
+  $zoomWidth = $Width * $zoom
+  $zoomHeight = $Height * $zoom
+  $zoomLeft = [Math]::Max(24, [Math]::Min(936 - $zoomWidth, $Left - (($zoomWidth - $Width) / 2)))
+  $zoomTop = [Math]::Max(82, [Math]::Min(490 - $zoomHeight, $Top - (($zoomHeight - $Height) / 2)))
+  $card = $Slide.Shapes.AddShape(5, $zoomLeft - 5, $zoomTop - 5, $zoomWidth + 10, $zoomHeight + 10)
+  $card.Fill.Solid()
+  $card.Fill.ForeColor.RGB = ConvertTo-OfficeRgb 255 255 255
+  $card.Line.ForeColor.RGB = ConvertTo-OfficeRgb 45 212 191
+  $card.Line.Weight = 2
+  $card.Glow.Color.RGB = ConvertTo-OfficeRgb 45 212 191
+  $card.Glow.Radius = 12
+  $card.Glow.Transparency = 0.3
+  $card.Shadow.Visible = -1
+  $card.Shadow.Blur = 14
+  $card.Shadow.OffsetY = 5
+  $card.Shadow.Transparency = 0.4
+  $detail = $Slide.Shapes.AddPicture($detailPath, 0, -1, $zoomLeft, $zoomTop, $zoomWidth, $zoomHeight)
+  $effect = $Slide.TimeLine.MainSequence.AddEffect($detail, 10, 0, 2)
+  $effect.Timing.Duration = 0.3
 }
 
 function Add-CinematicBackdrop {
@@ -303,13 +295,14 @@ try {
     $slide.Shapes.AddPicture($sceneImages[$timelineScene.SceneIndex], 0, -1, $pictureLeft, $pictureTop, $pictureWidth, $pictureHeight) | Out-Null
     Add-CinematicChrome -Slide $slide -SceneLabel $timelineScene.SceneLabel -SceneNumber $timelineScene.SceneNumber
     Add-PatientTracker -Slide $slide -TrackerText $timelineScene.Tracker
+    $script:focusSource = $sceneImages[$timelineScene.SceneIndex]
     if ($timelineScene.Oval) {
       $oval = $timelineScene.Oval
-      Add-RedOval -Slide $slide -Left ($pictureLeft + ($oval[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval[1] * $pictureHeight / 540)) -Width ($oval[2] * $pictureWidth / 960) -Height ($oval[3] * $pictureHeight / 540)
+      Add-ZoomFocus -Slide $slide -Left ($pictureLeft + ($oval[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval[1] * $pictureHeight / 540)) -Width ($oval[2] * $pictureWidth / 960) -Height ($oval[3] * $pictureHeight / 540)
     }
     if ($timelineScene.Oval2) {
       $oval2 = $timelineScene.Oval2
-      Add-RedOval -Slide $slide -Left ($pictureLeft + ($oval2[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval2[1] * $pictureHeight / 540)) -Width ($oval2[2] * $pictureWidth / 960) -Height ($oval2[3] * $pictureHeight / 540)
+      Add-ZoomFocus -Slide $slide -Left ($pictureLeft + ($oval2[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval2[1] * $pictureHeight / 540)) -Width ($oval2[2] * $pictureWidth / 960) -Height ($oval2[3] * $pictureHeight / 540)
     }
     $transition = $slide.SlideShowTransition
     $transition.AdvanceOnClick = 0
