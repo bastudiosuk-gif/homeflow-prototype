@@ -875,6 +875,14 @@ body{
 /* Keep the side menu vertically scrollable without showing a horizontal scrollbar. */
 .sidebar nav{overflow-x:hidden}
 
+/* Decorative corridor imagery stays behind the controls, not in patient views. */
+.login-screen{isolation:isolate}
+.login-screen::after{content:"";position:absolute;inset:0 0 0 42%;z-index:0;pointer-events:none;background-image:linear-gradient(90deg,#092d42 0%,rgba(8,43,63,.30) 45%,rgba(8,43,63,.18) 100%),url('../public/homeflow-journey-title.png');background-size:cover,auto 115%;background-position:center,right center;background-repeat:no-repeat;opacity:.25;mask-image:linear-gradient(90deg,transparent,#000 30%)}
+.login-screen .login-atmosphere{z-index:1;pointer-events:none}
+.sidebar{isolation:isolate;overflow-x:hidden}
+.sidebar::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(180deg,rgba(5,42,62,.58),rgba(5,42,62,.28) 45%,#082f45),url('../public/homeflow-journey-title.png');background-size:cover,auto 105%;background-position:center,right center;background-repeat:no-repeat;opacity:.18}
+@media(max-width:850px){.login-screen::after{left:0;background-size:cover,auto 110%;opacity:.20;mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.65) 55%,transparent)}}
+
 .homeflow-logout-dialog{margin:auto;width:min(440px,calc(100% - 32px));padding:32px;border:1px solid #d8e7ed;border-radius:24px;background:#fff;color:#093449;box-shadow:0 28px 90px #052f4340}
 .homeflow-logout-dialog::backdrop{background:#062c4666;backdrop-filter:blur(5px)}
 .homeflow-logout-dialog>img{width:180px;height:auto;display:block;margin-bottom:25px}
