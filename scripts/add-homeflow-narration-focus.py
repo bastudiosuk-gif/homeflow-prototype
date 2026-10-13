@@ -144,25 +144,13 @@ filters=[
 audit=json.loads((WORK/'live-edit-audit.json').read_text())
 for scene in audit['scenes'][1:-1]:
     filters.append(f"drawtext=fontfile='{BOLD}':text='{scene['label']}':fontsize=25:fontcolor=white:x=160:y=1025:enable='between(t,{scene['start']},{scene['end']})'")
-filters.append('format=yuv420p[film]')
-# Replace only the opening/closing artwork; leave the live journey and audio
-# untouched. Crossfades retain the existing page-entry timing.
-title_filters=(
- "[2:v]scale=1920:1080:force_original_aspect_ratio=decrease,"
- "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=white,format=rgba,split=2[titlein][titleout];"
- "[titlein]fade=t=in:st=0:d=0.7:alpha=1,fade=t=out:st=11.30:d=0.45:alpha=1[intro];"
- "[titleout]fade=t=in:st=136.575:d=0.45:alpha=1[outro];"
- "[film][intro]overlay=0:0:enable='lt(t,11.75)'[opening];"
- "[opening][outro]overlay=0:0:enable='gte(t,136.575)',"
- "drawbox=x=1380:y=1020:w=510:h=45:color=0x052f43@0.75:t=fill:enable='lt(t,11.75)+gte(t,136.575)',"
- f"drawtext=fontfile='{FONT}':text='Prototype / Demonstration Data Only':fontsize=23:fontcolor=white:x=1396:y=1030:enable='lt(t,11.75)+gte(t,136.575)',"
- "fade=t=out:st=149:d=1,format=yuv420p[video]"
-)
+filters.append('format=yuv420p[video]')
+# Original branded title cards are already present in the source film.
 filter_file=WORK/'narration-focus.ffscript'
-filter_file.write_text(',\n'.join(filters)+';\n'+title_filters,encoding='utf-8')
+filter_file.write_text(',\n'.join(filters),encoding='utf-8')
 target=ROOT/'public'/'homeflow-focused-journey.mp4'
 command=[FFMPEG,'-hide_banner','-loglevel','error','-y','-i',str(ROOT/'public'/'homeflow-live-journey.mp4'),
- '-i',str(overlay_path),'-loop','1','-framerate','30','-i',str(ROOT/'public'/'homeflow-journey-title.png'),
+ '-i',str(overlay_path),
  '-filter_complex_script',str(filter_file),'-filter_complex_threads','1',
  '-map','[video]','-map','0:a','-c:v','libx264','-preset','fast','-crf','17','-threads','4',
  '-c:a','copy','-t','150','-movflags','+faststart',str(target)]

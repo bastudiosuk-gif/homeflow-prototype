@@ -1,5 +1,6 @@
 """Replace the title cards without rerendering the existing focus choreography."""
 import subprocess
+import sys
 from pathlib import Path
 import imageio_ffmpeg
 
@@ -18,10 +19,13 @@ graph = (
     f"drawtext=fontfile='{font}':text='Prototype / Demonstration Data Only':fontsize=23:fontcolor=white:x=1396:y=1030:enable='lt(t,11.75)+gte(t,136.575)',"
     'fade=t=out:st=149:d=1,format=yuv420p[video]'
 )
+title_input=['-loop', '1', '-framerate', '30', '-i', str(root / 'public/homeflow-journey-title.png')]
+if '--original' in sys.argv:
+    title_input=['-i', str(root / 'public/homeflow-live-journey.mp4')]
+    graph="[0:v][1:v]overlay=0:0:enable='lt(t,11.75)+gte(t,136.575)',format=yuv420p[video]"
 subprocess.run([
     imageio_ffmpeg.get_ffmpeg_exe(), '-hide_banner', '-loglevel', 'error', '-y',
-    '-i', str(target), '-loop', '1', '-framerate', '30', '-i',
-    str(root / 'public/homeflow-journey-title.png'),
+    '-i', str(target), *title_input,
     '-filter_complex_threads', '1', '-filter_complex', graph,
     '-map', '[video]', '-map', '0:a', '-c:v', 'libx264', '-preset', 'fast',
     '-crf', '16', '-threads', '4', '-c:a', 'copy', '-t', '150',
