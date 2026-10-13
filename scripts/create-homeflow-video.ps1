@@ -86,8 +86,15 @@ function Add-ZoomFocus {
   $card.Shadow.OffsetY = 5
   $card.Shadow.Transparency = 0.4
   $detail = $Slide.Shapes.AddPicture($detailPath, 0, -1, $zoomLeft, $zoomTop, $zoomWidth, $zoomHeight)
-  $effect = $Slide.TimeLine.MainSequence.AddEffect($detail, 10, 0, 2)
-  $effect.Timing.Duration = 0.3
+  $cardEntrance = $Slide.TimeLine.MainSequence.AddEffect($card, 23, 0, 2)
+  $cardEntrance.Timing.Duration = 0.55
+  $effect = $Slide.TimeLine.MainSequence.AddEffect($detail, 23, 0, 2)
+  $effect.Timing.Duration = 0.55
+  $glowPulse = $Slide.TimeLine.MainSequence.AddEffect($card, 59, 0, 2)
+  $glowPulse.Timing.TriggerDelayTime = 0.55
+  $glowPulse.Timing.Duration = 0.7
+  $glowPulse.Timing.AutoReverse = -1
+  $glowPulse.Timing.RepeatDuration = $script:focusDuration
 }
 
 function Add-CinematicBackdrop {
@@ -296,6 +303,7 @@ try {
     Add-CinematicChrome -Slide $slide -SceneLabel $timelineScene.SceneLabel -SceneNumber $timelineScene.SceneNumber
     Add-PatientTracker -Slide $slide -TrackerText $timelineScene.Tracker
     $script:focusSource = $sceneImages[$timelineScene.SceneIndex]
+    $script:focusDuration = $timelineScene.Duration
     if ($timelineScene.Oval) {
       $oval = $timelineScene.Oval
       Add-ZoomFocus -Slide $slide -Left ($pictureLeft + ($oval[0] * $pictureWidth / 960)) -Top ($pictureTop + ($oval[1] * $pictureHeight / 540)) -Width ($oval[2] * $pictureWidth / 960) -Height ($oval[3] * $pictureHeight / 540)
